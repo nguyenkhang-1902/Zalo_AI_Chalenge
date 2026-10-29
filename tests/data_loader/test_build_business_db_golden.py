@@ -33,7 +33,9 @@ def test_merges_monthly_files_for_dev_005(tmp_path: Path):
     assert len(table_names) < 24  # 24 file nhưng phải gộp bớt, không ra 24 table rời rạc
 
     merged = next(t for t in summary["tables"] if len(t["source_files"]) > 1)
-    assert len(merged["source_files"]) >= 12  # gộp được phần lớn 17 file BanHang_Thang..
+    # Gộp raw trước khi clean (FR-011) phải ra đúng cả 17 file BanHang_Thang.., không chỉ "đa số":
+    # một regression lùi về gộp 13-16 file phải FAIL test này, không được lọt qua im lặng.
+    assert len(merged["source_files"]) == 17
 
 
 def test_rerun_is_idempotent(tmp_path: Path):
@@ -43,6 +45,18 @@ def test_rerun_is_idempotent(tmp_path: Path):
     second = build_business(business_dir, tmp_path)
 
     assert first == second  # SC-004: chạy lại ra kết quả giống nhau 100%
+
+
+def test_rerun_is_idempotent_for_raw_grouped_business(tmp_path: Path):
+    """SC-004 cho đường gộp raw-period-series mới (dev_005 thực sự đi qua
+    _group_raw_period_series/_clean_raw_group_to_table; biz_105 không, vì các sheet của nó có
+    tên khác nhau từng tháng -> không tạo raw group nào)."""
+    business_dir = PROJECT_ROOT / "public_test" / "data" / "dev_005"
+
+    first = build_business(business_dir, tmp_path)
+    second = build_business(business_dir, tmp_path)
+
+    assert first == second
 
 
 def test_one_broken_file_does_not_crash_other_tables(tmp_path: Path):

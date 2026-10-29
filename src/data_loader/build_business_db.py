@@ -148,8 +148,17 @@ def _clean_raw_group_to_table(group: list[RawSheet], readme: ReadmeInfo | None) 
     for rs in group:
         match = locate_header(rs.rows, expected)
         confidences.append(match.confidence)
+        member_header = _build_header(rs.rows[match.header_row_index])
         if header is None:
-            header = _build_header(rs.rows[match.header_row_index])
+            header = member_header
+        elif member_header != header:
+            # Không nối positional 2 file header khác nhau -- pandas sẽ âm thầm pad NaN theo vị trí
+            # cột thay vì raise, ra dữ liệu sai lặng lẽ (còn tệ hơn crash). Raise để try/except ở
+            # build_business bắt, rơi các sheet trong group này về xử lý từng file riêng.
+            raise ValueError(
+                f"Header không khớp trong period-series group: {rs.source_file} có "
+                f"{member_header!r}, khác header nhóm {group[0].source_file} là {header!r}"
+            )
         all_data_rows.extend(rs.rows[match.header_row_index + 1 :])
 
     if not all_data_rows:
