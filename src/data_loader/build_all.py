@@ -26,7 +26,12 @@ def _build_one(business_dir: Path, out_dir: Path) -> tuple[str, str]:
     chung logger/traceback với process cha nên trả status đơn giản thay vì raise lại)."""
     business_id = business_dir.name
     try:
-        build_business(business_dir, out_dir)
+        summary = build_business(business_dir, out_dir)
+        if not summary["tables"]:
+            # Chạy không lỗi nhưng không ra table nào (vd định dạng file chưa đọc được) -- khác
+            # "failed" (crash), nhưng cũng không được báo "ok" (SC-001: >=1 table/business).
+            logger.error("Business %s không tạo được table nào", business_id)
+            return business_id, "empty"
         return business_id, "ok"
     except Exception:
         logger.error("Business %s thất bại hoàn toàn", business_id, exc_info=True)
