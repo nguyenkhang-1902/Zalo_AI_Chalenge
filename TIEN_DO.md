@@ -43,3 +43,32 @@
   test), không phải kiến thức tĩnh bake vào Docker/prompt.
 - [ ] 🔜 Khang xác nhận checklist **C4** (đọc rulebook.md runtime từ `/data`, không hardcode) —
   đúng hướng chưa, trước khi sang `writing-plans` cho `001-data-loader`.
+
+## 1. ĐỢT 2026-10-29 (tiếp) — Thực thi `001-data-loader` bằng subagent-driven-development
+
+- [x] ✅ `writing-plans`: viết `plan.md` + `tasks.md` (11 task T001-T011, TDD, code thật) cho
+  sub-project A.
+- [x] ✅ `subagent-driven-development`: thực thi đủ 11 task, mỗi task 1 implementer + 1 reviewer
+  riêng. 3 lỗi thật phát hiện qua golden test trên dữ liệu thật (không phải fixture):
+  - T7: table gộp mất `column_dtypes` — sửa.
+  - T10 (2 vòng sửa): `split_quantity_unit` quyết định riêng từng file trên dữ liệu nhiễu → 17
+    file tháng của `dev_005` chỉ gộp được 8-9/17 — sửa bằng cách gộp dữ liệu thô theo tên
+    file+cột README **trước** khi làm sạch, chỉ làm sạch 1 lần → gộp đủ 17/17. Thêm guard
+    header-mismatch tránh gộp sai âm thầm.
+  - T11 (2 vòng sửa): bản tuần tự đúng theo plan đo được 401.6s (vượt 3.3x ngưỡng 120s) → đổi
+    sang `ProcessPoolExecutor`; **đo RAM thật** (peak RSS 2.89GB, không đoán) để chốt 12 worker;
+    thêm resilience khi 1 worker crash.
+- [x] ✅ **Final whole-branch review** (model opus, tự chạy `build_all` trên toàn bộ `public_test`
+  để kiểm, không chỉ đọc diff) — tìm ra **3 lỗi Critical** gây sai âm thầm trên dữ liệu thật:
+  1. pandas 3.1.0 (chưa pin version) đổi ngữ nghĩa NaN → cột "Ghi chú" bị xoá sạch thành số.
+  2. Business chỉ có file `.sqlite` (biz_123, dev_006 — ~230 câu hỏi) → loader bỏ qua, ra 0 bảng
+     nhưng vẫn báo "ok".
+  3. Số tiền có hậu tố `đ/k/tr` (`"1.500đ"`, `"79k"`) bị hiểu nhầm thành số lượng+đơn vị, sai tới
+     1000 lần ngay trong cột doanh thu — **lật lại ruling của tôi ở Task 6** (quét ban đầu không
+     bắt được case có hậu tố).
+  → Dispatch 1 đợt sửa cuối (3 Critical + 2 Important liên quan: cô lập lỗi theo từng file/table,
+  JSON an toàn, trùng tên table không phân biệt hoa-thường) — xem tiến độ ở
+  `.superpowers/sdd/tasks/progress.md`.
+- [ ] 🔜 7 việc Important/Minor còn lại hoãn tới trước `004-reasoning-agent` — xem checklist C5.
+- [ ] 🔜 Sau khi đợt sửa cuối xong + review sạch → `finishing-a-development-branch`, rồi brainstorm
+  `002-date-calendar-resolver`.

@@ -1229,7 +1229,7 @@ git commit -m "feat(data-loader): wire full pipeline for a single business, veri
 
 **Interfaces:**
 - Consumes: `build_business` (từ T010)
-- Produces: `build_all(dataset_dir: Path, out_dir: Path) -> dict[str, str]` (map `business_id -> "ok"|"failed"`)
+- Produces: `build_all(dataset_dir: Path, out_dir: Path) -> dict[str, str]` (map `business_id -> "ok"|"empty"|"failed"` — "empty" added in the final fix wave: ran without crashing but produced 0 tables, e.g. an unrecognized source format)
 
 🎯 **Checkpoint của sub-project 001-data-loader**: sau task này, chạy
 `python -m data_loader.build_all --dataset-dir train --out build_output` phải ra `.duckdb` +
