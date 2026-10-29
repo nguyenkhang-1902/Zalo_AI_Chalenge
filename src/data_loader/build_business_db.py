@@ -4,6 +4,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import re
+from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +15,7 @@ from data_loader.duckdb_writer import write_tables
 from data_loader.header_locator import locate_header
 from data_loader.models import LoadedTable
 from data_loader.readme_parser import ReadmeInfo, columns_for, parse_readme
-from data_loader.schema_grouping import group_same_schema_files
+from data_loader.schema_grouping import _is_period_series, group_same_schema_files
 from data_loader.schema_summary import summarize_business
 from data_loader.sheet_reader import RawSheet, read_all_sheets
 from data_loader.value_cleaner import (
@@ -39,17 +42,12 @@ def _build_header(header_row: tuple) -> list[str]:
     return header
 
 
-def _clean_sheet_to_table(raw_sheet: RawSheet, expected_columns: list[str] | None) -> LoadedTable | None:
-    match = locate_header(raw_sheet.rows, expected_columns)
-    header_row = raw_sheet.rows[match.header_row_index]
-    data_rows = raw_sheet.rows[match.header_row_index + 1 :]
-    if not data_rows:
-        return None
-
-    header = _build_header(header_row)
-    frame = pd.DataFrame(data_rows, columns=header)
+def _apply_value_cleaning(frame: pd.DataFrame) -> dict[str, str]:
+    """Chạy cleaning numeric/date/số-lượng+đơn-vị trên 1 DataFrame đã có header, mutate frame tại
+    chỗ, trả về column_dtypes. Dùng chung cho đường 1-file và đường gộp raw period-series, để quyết
+    định tách số+đơn vị chỉ được đưa ra MỘT lần trên dữ liệu đã gộp (không lặp lại độc lập mỗi file,
+    vốn có thể lật qua lại ngưỡng 0.5 khi noise thật khác nhau từng file)."""
     column_dtypes: dict[str, str] = {}
-
     for col in list(frame.columns):
         values = frame[col].tolist()
 
@@ -74,6 +72,19 @@ def _clean_sheet_to_table(raw_sheet: RawSheet, expected_columns: list[str] | Non
             column_dtypes[col] = "date"
         else:
             column_dtypes[col] = "raw"
+    return column_dtypes
+
+
+def _clean_sheet_to_table(raw_sheet: RawSheet, expected_columns: list[str] | None) -> LoadedTable | None:
+    match = locate_header(raw_sheet.rows, expected_columns)
+    header_row = raw_sheet.rows[match.header_row_index]
+    data_rows = raw_sheet.rows[match.header_row_index + 1 :]
+    if not data_rows:
+        return None
+
+    header = _build_header(header_row)
+    frame = pd.DataFrame(data_rows, columns=header)
+    column_dtypes = _apply_value_cleaning(frame)
 
     table_name = raw_sheet.source_file.rsplit(".", 1)[0]
     if raw_sheet.sheet_name:
@@ -84,6 +95,78 @@ def _clean_sheet_to_table(raw_sheet: RawSheet, expected_columns: list[str] | Non
         sheet_name=raw_sheet.sheet_name,
         table_name=table_name,
         header_confidence=match.confidence,
+        frame=frame,
+        column_dtypes=column_dtypes,
+    )
+
+
+def _group_raw_period_series(
+    raw_sheets: list[RawSheet], readme: ReadmeInfo | None
+) -> tuple[list[list[RawSheet]], list[RawSheet]]:
+    """Gom RawSheet (TRƯỚC khi clean) thành các nhóm period-series đáng tin cậy, để clean 1 lần
+    trên dữ liệu gộp thay vì clean riêng từng file rồi mới gộp (xem _apply_value_cleaning).
+
+    Chỉ gom các sheet cùng sheet_name VÀ có cùng danh sách cột khai báo ở README
+    (`columns_for`) -- danh sách này ổn định cho mọi file khớp 1 template, không phụ thuộc
+    nhiễu dữ liệu thật như khi gom theo cột đã clean. Sheet không có cột khai báo (không rõ
+    README, hoặc README không có) luôn rơi về nhóm "singles" để xử lý từng file như cũ.
+    Trong mỗi bucket, còn phải xác nhận tên file đúng là 1 chuỗi theo kỳ (dùng lại guard
+    `_is_period_series` của schema_grouping) mới coi là 1 group; nếu không, trả về singles.
+    """
+    buckets: dict[tuple, list[RawSheet]] = defaultdict(list)
+    singles: list[RawSheet] = []
+
+    for rs in raw_sheets:
+        expected = columns_for(readme, rs.source_file, rs.sheet_name) if readme else None
+        if expected is None:
+            singles.append(rs)
+            continue
+        buckets[(rs.sheet_name, tuple(expected))].append(rs)
+
+    groups: list[list[RawSheet]] = []
+    for bucket in buckets.values():
+        if len(bucket) < 2:
+            singles.extend(bucket)
+            continue
+        stems = [os.path.splitext(rs.source_file)[0] for rs in bucket]
+        prefix = os.path.commonprefix(stems)
+        if _is_period_series(stems, prefix):
+            groups.append(bucket)
+        else:
+            singles.extend(bucket)
+
+    return groups, singles
+
+
+def _clean_raw_group_to_table(group: list[RawSheet], readme: ReadmeInfo | None) -> LoadedTable | None:
+    """Gộp raw rows của 1 period-series group rồi clean MỘT LẦN trên dữ liệu đã gộp (FR-011)."""
+    expected = columns_for(readme, group[0].source_file, group[0].sheet_name) if readme else None
+
+    header: list[str] | None = None
+    all_data_rows: list[tuple] = []
+    confidences: list[str] = []
+    for rs in group:
+        match = locate_header(rs.rows, expected)
+        confidences.append(match.confidence)
+        if header is None:
+            header = _build_header(rs.rows[match.header_row_index])
+        all_data_rows.extend(rs.rows[match.header_row_index + 1 :])
+
+    if not all_data_rows:
+        return None
+
+    frame = pd.DataFrame(all_data_rows, columns=header)
+    column_dtypes = _apply_value_cleaning(frame)
+
+    stems = [os.path.splitext(rs.source_file)[0] for rs in group]
+    prefix = os.path.commonprefix(stems)
+    table_name = re.sub(r"[_\-\d]+$", "", prefix) or "data"
+
+    return LoadedTable(
+        source_files=[rs.source_file for rs in group],
+        sheet_name=group[0].sheet_name,
+        table_name=table_name,
+        header_confidence="low" if "low" in confidences else "high",
         frame=frame,
         column_dtypes=column_dtypes,
     )
@@ -108,8 +191,27 @@ def build_business(business_dir: Path, out_dir: Path) -> dict:
     readme_path = business_dir / "README.md"
     readme: ReadmeInfo | None = parse_readme(readme_path) if readme_path.exists() else None
 
+    raw_sheets = read_all_sheets(business_dir)
+    groups, singles = _group_raw_period_series(raw_sheets, readme)
+
     tables: list[LoadedTable] = []
-    for raw_sheet in read_all_sheets(business_dir):
+
+    for group in groups:
+        try:
+            table = _clean_raw_group_to_table(group, readme)
+        except Exception:
+            logger.warning(
+                "Gộp raw period-series lỗi (%s) của %s, xử lý riêng từng file",
+                [rs.source_file for rs in group],
+                business_id,
+                exc_info=True,
+            )
+            singles.extend(group)
+            continue
+        if table is not None:
+            tables.append(table)
+
+    for raw_sheet in singles:
         expected = (
             columns_for(readme, raw_sheet.source_file, raw_sheet.sheet_name) if readme else None
         )
