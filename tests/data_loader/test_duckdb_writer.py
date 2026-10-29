@@ -25,3 +25,17 @@ def test_writes_and_overwrites_tables_idempotently(tmp_path: Path):
     con.close()
 
     assert rows == [("An",), ("Bình",)]
+
+
+def test_one_failing_table_does_not_abort_the_others(tmp_path: Path):
+    db_path = tmp_path / "biz.duckdb"
+    first = LoadedTable(["a.csv"], None, "DonHang", "high", pd.DataFrame({"x": [1]}))
+    clash = LoadedTable(["b.csv"], None, "donhang", "high", pd.DataFrame({"x": [2]}))  # trùng (không phân biệt hoa/thường)
+    last = LoadedTable(["c.csv"], None, "KhachHang", "high", pd.DataFrame({"y": [3]}))
+
+    written = write_tables(db_path, [first, clash, last])
+
+    assert [t.table_name for t in written] == ["DonHang", "KhachHang"]
+    con = duckdb.connect(str(db_path))
+    assert con.execute('SELECT y FROM "KhachHang"').fetchall() == [(3,)]
+    con.close()
