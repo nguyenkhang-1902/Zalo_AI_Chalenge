@@ -13,6 +13,13 @@ from data_loader.build_business_db import build_business
 
 logger = logging.getLogger(__name__)
 
+# Measured, not guessed: peak total RSS (parent + all worker children) during a real
+# train/ run with 12 workers was 2.9GB (psutil poll, see task-11-report.md) — comfortably
+# under the ~8GB headroom budget for a 16GB machine, so the full os.cpu_count() width is
+# safe here. Both of Khang's machines have 12 logical cores; RAM (16GB vs 32GB) is the only
+# axis that differs, and 2.9GB clears that on the smaller one too.
+_MAX_WORKERS = 12
+
 
 def _build_one(business_dir: Path, out_dir: Path) -> tuple[str, str]:
     """Build 1 business trong process con, tự bắt exception ở đây (process con không dùng
@@ -41,10 +48,21 @@ def build_all(dataset_dir: Path, out_dir: Path) -> dict[str, str]:
 
     results: dict[str, str] = {}
     start = time.monotonic()
-    with ProcessPoolExecutor() as pool:
-        futures = [pool.submit(_build_one, business_dir, out_dir) for business_dir in business_dirs]
-        for future in as_completed(futures):
-            business_id, status = future.result()
+    with ProcessPoolExecutor(max_workers=_MAX_WORKERS) as pool:
+        future_to_business = {
+            pool.submit(_build_one, business_dir, out_dir): business_dir.name
+            for business_dir in business_dirs
+        }
+        for future in as_completed(future_to_business):
+            business_id = future_to_business[future]
+            try:
+                _, status = future.result()
+            except Exception:
+                # Worker process chết hẳn (ví dụ BrokenProcessPool do segfault/OOM) thì vẫn
+                # không được để crash cả run 30 business — ghi "failed" cho business này và
+                # tiếp tục các future còn lại (SC-001: không business nào làm sập toàn bộ run).
+                logger.error("Business %s thất bại hoàn toàn (worker crash)", business_id, exc_info=True)
+                status = "failed"
             results[business_id] = status
     logger.info("Xong %d business trong %.1fs", len(results), time.monotonic() - start)
     return results
