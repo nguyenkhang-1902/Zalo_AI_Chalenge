@@ -18,7 +18,7 @@
 
 ## Phase 1: Setup
 
-### T001 [Setup] Khởi tạo môi trường Python
+### Task 1: T001 [Setup] Khởi tạo môi trường Python
 
 **Files:**
 - Create: `requirements.txt`
@@ -78,7 +78,7 @@ git commit -m "chore: scaffold python env for data-loader sub-project"
 
 ## Phase 2: Foundational (các module độc lập — chạy song song được)
 
-### T002 [P] [US1] `models.py` — LoadedTable dùng chung
+### Task 2: T002 [P] [US1] `models.py` — LoadedTable dùng chung
 
 **Files:**
 - Create: `src/data_loader/models.py`
@@ -118,7 +118,7 @@ git commit -m "feat(data-loader): add LoadedTable shared dataclass"
 
 ---
 
-### T003 [P] [US1] `sheet_reader.py` — đọc thô csv/xlsx
+### Task 3: T003 [P] [US1] `sheet_reader.py` — đọc thô csv/xlsx
 
 **Files:**
 - Create: `src/data_loader/sheet_reader.py`
@@ -233,7 +233,7 @@ git commit -m "feat(data-loader): read raw rows from csv/xlsx files"
 
 ---
 
-### T004 [P] [US1] `readme_parser.py` — parse README.md
+### Task 4: T004 [P] [US1] `readme_parser.py` — parse README.md
 
 **Files:**
 - Create: `src/data_loader/readme_parser.py`
@@ -364,7 +364,7 @@ git commit -m "feat(data-loader): parse README.md column declarations"
 
 ---
 
-### T005 [P] [US1] `header_locator.py` — định vị dòng header thật
+### Task 5: T005 [P] [US1] `header_locator.py` — định vị dòng header thật
 
 **Files:**
 - Create: `src/data_loader/header_locator.py`
@@ -473,7 +473,7 @@ git commit -m "feat(data-loader): locate real header row using readme hints"
 
 ---
 
-### T006 [P] [US1] `value_cleaner.py` — làm sạch số/ngày/số lượng-đơn vị
+### Task 6: T006 [P] [US1] `value_cleaner.py` — làm sạch số/ngày/số lượng-đơn vị
 
 **Files:**
 - Create: `src/data_loader/value_cleaner.py`
@@ -659,7 +659,7 @@ git commit -m "feat(data-loader): generic numeric/date/quantity-unit cleaning ru
 
 ---
 
-### T007 [P] [US1] `schema_grouping.py` — FR-011: gộp file cùng schema chia theo kỳ
+### Task 7: T007 [P] [US1] `schema_grouping.py` — FR-011: gộp file cùng schema chia theo kỳ
 
 **Files:**
 - Create: `src/data_loader/schema_grouping.py`
@@ -796,7 +796,7 @@ git commit -m "feat(data-loader): union same-schema files split by period (FR-01
 
 ---
 
-### T008 [P] [US1] `schema_summary.py` — sinh JSON tóm tắt schema
+### Task 8: T008 [P] [US1] `schema_summary.py` — sinh JSON tóm tắt schema
 
 **Files:**
 - Create: `src/data_loader/schema_summary.py`
@@ -898,7 +898,7 @@ git commit -m "feat(data-loader): build per-business schema summary json"
 
 ---
 
-### T009 [P] [US1] `duckdb_writer.py` — ghi DuckDB
+### Task 9: T009 [P] [US1] `duckdb_writer.py` — ghi DuckDB
 
 **Files:**
 - Create: `src/data_loader/duckdb_writer.py`
@@ -992,7 +992,7 @@ git commit -m "feat(data-loader): write cleaned tables to duckdb, overwrite on r
 
 ## Phase 3: Integration (phụ thuộc toàn bộ Phase 2 — không chạy song song)
 
-### T010 [US1] `build_business_db.py` — orchestrator 1 business + golden test trên dữ liệu thật
+### Task 10: T010 [US1] `build_business_db.py` — orchestrator 1 business + golden test trên dữ liệu thật
 
 **Files:**
 - Create: `src/data_loader/build_business_db.py`
@@ -1221,7 +1221,7 @@ git commit -m "feat(data-loader): wire full pipeline for a single business, veri
 
 ---
 
-### T011 [US1] `build_all.py` — batch runner toàn dataset + golden test SC-001/SC-003
+### Task 11: T011 [US1] `build_all.py` — batch runner toàn dataset + golden test SC-001/SC-003
 
 **Files:**
 - Create: `src/data_loader/build_all.py`
