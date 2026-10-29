@@ -21,6 +21,7 @@ from data_loader.sheet_reader import RawSheet, read_all_sheets
 from data_loader.value_cleaner import (
     clean_numeric_column,
     parse_vn_date_column,
+    parse_vn_money,
     split_quantity_unit,
 )
 
@@ -49,7 +50,17 @@ def _apply_value_cleaning(frame: pd.DataFrame) -> dict[str, str]:
     vốn có thể lật qua lại ngưỡng 0.5 khi noise thật khác nhau từng file)."""
     column_dtypes: dict[str, str] = {}
     for col in list(frame.columns):
-        values = frame[col].tolist()
+        # Rule trong value_cleaner coi None là thiếu; .tolist() của pandas lại trả NaN/NaT
+        # (isinstance(nan, float) -> True sẽ bị đếm như số hợp lệ) -> chuẩn hoá về None tại đây.
+        values = [None if pd.isna(v) else v for v in frame[col].tolist()]
+
+        # Tiền có hậu tố ("1.500đ") phải thử TRƯỚC split_quantity_unit, nếu không "đ" bị coi là
+        # đơn vị và "1.500" thành 1.5 (lệch 1000 lần).
+        cleaned, dtype = parse_vn_money(values)
+        if dtype == "numeric":
+            frame[col] = cleaned
+            column_dtypes[col] = "numeric"
+            continue
 
         split = split_quantity_unit(values)
         if split is not None:
@@ -184,15 +195,17 @@ def _clean_raw_group_to_table(group: list[RawSheet], readme: ReadmeInfo | None) 
 def _dedupe_table_names(tables: list[LoadedTable]) -> None:
     """Chống trùng table_name khi 2 nhóm schema khác nhau bị đặt cùng tên sau group_same_schema_files
     (thực tế xảy ra với dev_005: cùng tiền tố file nhưng schema lệch nhau giữa các tháng do
-    split_quantity_unit tách khác nhau theo ngưỡng xác suất) -> tránh crash trùng tên trong DuckDB."""
-    seen: dict[str, int] = {}
+    split_quantity_unit tách khác nhau theo ngưỡng xác suất) -> tránh crash trùng tên trong DuckDB.
+    So sánh casefold vì identifier DuckDB không phân biệt hoa/thường kể cả khi quote ("DonHang" và
+    "donhang" là 1 table); tên mới vẫn giữ nguyên casing gốc."""
+    seen: set[str] = set()
     for t in tables:
-        name = t.table_name
-        if name in seen:
-            seen[name] += 1
-            t.table_name = f"{name}_{seen[name]}"
-        else:
-            seen[name] = 1
+        name, n = t.table_name, 1
+        while name.casefold() in seen:
+            n += 1
+            name = f"{t.table_name}_{n}"
+        t.table_name = name
+        seen.add(name.casefold())
 
 
 def build_business(business_dir: Path, out_dir: Path) -> dict:
@@ -241,12 +254,13 @@ def build_business(business_dir: Path, out_dir: Path) -> dict:
     _dedupe_table_names(tables)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    write_tables(out_dir / f"{business_id}.duckdb", tables)
+    tables = write_tables(out_dir / f"{business_id}.duckdb", tables)
 
     readme_raw = readme.raw_text if readme else ""
     summary = summarize_business(business_id, tables, readme_raw)
     (out_dir / f"{business_id}.schema.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        # default=str: giá trị lạ lọt qua cột "raw" (vd datetime.time) không được làm sập cả business
+        json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     return summary
 

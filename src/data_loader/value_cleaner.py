@@ -1,8 +1,10 @@
-"""Rule thuần làm sạch giá trị cột: số có dấu phẩy ngăn nghìn, số lượng kèm đơn vị, ngày VN."""
+"""Rule thuần làm sạch giá trị cột: số có dấu phẩy ngăn nghìn, tiền VN có hậu tố, số lượng kèm đơn
+vị, ngày VN. Giá trị thiếu phải là None (caller tự chuẩn hoá NaN/NaT của pandas về None)."""
 from __future__ import annotations
 
 import re
 from datetime import date, datetime
+from decimal import Decimal
 
 _NUMERIC_RE = re.compile(r"^-?\d[\d,]*\.?\d*$")
 _QTY_UNIT_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*(\D+)$")
@@ -64,6 +66,59 @@ def split_quantity_unit(values: list) -> tuple[list, list] | None:
                 numbers.append(None)
                 units.append(None)
     return numbers, units
+
+
+# Dấu chấm ngăn nghìn chỉ được coi là ngăn nghìn khi đi kèm hậu tố tiền tệ (đ/vnd/đồng) -- đây là
+# tín hiệu tách bạch với số thập phân dấu chấm mà clean_numeric_column đang xử lý.
+_MONEY_CURRENCY_RE = re.compile(r"^(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:đ|vnđ|vnd|đồng)$", re.IGNORECASE)
+_MONEY_SCALED_RE = re.compile(r"^(\d+(?:,\d+)?)\s*(k|tr|triệu)$", re.IGNORECASE)
+# "5tr520" = 5.520.000: đã đối chiếu SL x đơn giá = thành tiền trên dữ liệu thật. Chỉ nhận đúng 3
+# chữ số sau "tr"; dạng "1tr2"/"1tr25" (mơ hồ: 1.200.000 hay 1.002.000?) cố ý KHÔNG match -> rơi
+# xuống ngưỡng raw thay vì đoán sai.
+_MONEY_TR_COMPOUND_RE = re.compile(r"^(\d+)\s*tr\s*(\d{3})$", re.IGNORECASE)
+_MONEY_MULTIPLIERS = {"k": 1_000, "tr": 1_000_000, "triệu": 1_000_000}
+
+
+def _to_money(value) -> float | None:
+    """Số tiền có hậu tố VN -> float (giữ dấu âm của dòng trả hàng); None nếu không phải dạng
+    tiền có hậu tố."""
+    if value is None or isinstance(value, (int, float)):
+        return None
+    text = str(value).strip()
+    sign = -1 if text.startswith("-") else 1
+    text = text.lstrip("-").strip()
+    m = _MONEY_CURRENCY_RE.match(text)
+    if m:
+        return sign * float(m.group(1).replace(".", ""))
+    m = _MONEY_SCALED_RE.match(text)
+    if m:
+        amount = Decimal(m.group(1).replace(",", "."))
+        return sign * float(amount * _MONEY_MULTIPLIERS[m.group(2).lower()])
+    m = _MONEY_TR_COMPOUND_RE.match(text)
+    if m:
+        return sign * float(int(m.group(1)) * 1_000_000 + int(m.group(2)) * 1_000)
+    return None
+
+
+def parse_vn_money(values: list) -> tuple[list, str]:
+    """Cột tiền viết tay kiểu VN ("1.500đ", "79k", "2,76tr", "5tr520") trộn số thường -> "numeric".
+    Chỉ nhận khi có ít nhất 1 giá trị mang hậu tố tiền và >= _RAW_RATIO_THRESHOLD giá trị non-null
+    là tiền-có-hậu-tố hoặc số thường; ngược lại trả "raw" để pipeline thử tiếp các rule khác."""
+    non_null = [v for v in values if v is not None and str(v).strip() != ""]
+    if not non_null:
+        return list(values), "raw"
+    money = [_to_money(v) for v in non_null]
+    if not any(m is not None for m in money):
+        return list(values), "raw"
+    ok = sum(m is not None or _to_number(v) is not None for m, v in zip(money, non_null))
+    if ok / len(non_null) < _RAW_RATIO_THRESHOLD:
+        return list(values), "raw"
+
+    def _parse_one(v):
+        m = _to_money(v)
+        return m if m is not None else _to_number(v)
+
+    return [_parse_one(v) for v in values], "numeric"
 
 
 def parse_vn_date_column(values: list) -> tuple[list, str]:
