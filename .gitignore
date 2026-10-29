@@ -1,0 +1,21 @@
+# Dataset thô của BTC — quá lớn, luôn tải lại được từ portal, không commit
+/train/
+/public_test/
+/private_test/
+
+# Output trung gian của pipeline (DuckDB cache, log chạy)
+*.duckdb
+*.duckdb.wal
+/build_output/
+/logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Model weight (quá lớn, bundle riêng lúc build Docker image, không commit git)
+*.gguf
+*.safetensors
+/models/
