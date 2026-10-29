@@ -17,6 +17,8 @@ def _table(source_file: str, data: dict) -> LoadedTable:
 def test_groups_monthly_files_with_same_schema_and_numeric_suffix():
     jan = _table("BanHang_Thang01_2025.xlsx", {"Mã đơn": ["A1"], "Tổng tiền": [1000]})
     feb = _table("BanHang_Thang02_2025.xlsx", {"Mã đơn": ["B1"], "Tổng tiền": [2000]})
+    jan.column_dtypes = {"Tổng tiền": "numeric"}
+    feb.column_dtypes = {"Tổng tiền": "numeric"}
     danh_muc = _table("DanhMuc.xlsx", {"Mã hàng": ["SP1"], "Tên": ["Cà phê"]})
 
     result = group_same_schema_files([jan, feb, danh_muc])
@@ -25,6 +27,7 @@ def test_groups_monthly_files_with_same_schema_and_numeric_suffix():
     merged = next(t for t in result if len(t.source_files) == 2)
     assert set(merged.source_files) == {"BanHang_Thang01_2025.xlsx", "BanHang_Thang02_2025.xlsx"}
     assert len(merged.frame) == 2
+    assert merged.column_dtypes == {"Tổng tiền": "numeric"}
     assert merged.table_name.startswith("BanHang")
     standalone = next(t for t in result if len(t.source_files) == 1)
     assert standalone.table_name == "DanhMuc"

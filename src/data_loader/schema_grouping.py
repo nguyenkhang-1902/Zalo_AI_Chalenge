@@ -43,6 +43,9 @@ def group_same_schema_files(tables: list[LoadedTable]) -> list[LoadedTable]:
             continue
 
         table_name = re.sub(r"[_\-\d]+$", "", prefix) or "data"
+        merged_dtypes: dict = {}
+        for t in group:
+            merged_dtypes.update(t.column_dtypes)
         result.append(
             LoadedTable(
                 source_files=[f for t in group for f in t.source_files],
@@ -50,6 +53,7 @@ def group_same_schema_files(tables: list[LoadedTable]) -> list[LoadedTable]:
                 table_name=table_name,
                 header_confidence="low" if any(t.header_confidence == "low" for t in group) else "high",
                 frame=pd.concat([t.frame for t in group], ignore_index=True),
+                column_dtypes=merged_dtypes,
             )
         )
     return result
