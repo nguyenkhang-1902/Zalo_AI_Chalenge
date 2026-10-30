@@ -9,6 +9,8 @@ def today(as_of: date) -> tuple[date, date]:
 
 
 def n_days_ago(as_of: date, n: int) -> tuple[date, date]:
+    if not isinstance(n, int) or isinstance(n, bool):
+        raise ValueError(f"n phải là int, got {type(n).__name__}")
     if n < 1:
         raise ValueError(f"n phải >= 1, got {n}")
     return (as_of - timedelta(days=n - 1), as_of)

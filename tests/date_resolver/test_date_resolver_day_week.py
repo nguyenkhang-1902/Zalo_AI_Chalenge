@@ -25,6 +25,12 @@ def test_n_days_ago_rejects_non_positive_n():
         n_days_ago(date(2026, 10, 30), 0)
 
 
+@pytest.mark.parametrize("bad_n", ["5", 2.5, True])
+def test_n_days_ago_rejects_non_int_n(bad_n):
+    with pytest.raises(ValueError):
+        n_days_ago(date(2026, 10, 30), bad_n)
+
+
 def test_this_week_starts_monday_ends_today():
     # 2026-10-30 là thứ Sáu
     assert this_week(date(2026, 10, 30)) == (date(2026, 10, 26), date(2026, 10, 30))
