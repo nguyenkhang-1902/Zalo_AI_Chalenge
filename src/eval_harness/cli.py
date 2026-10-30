@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from .report import format_report
 from .scoring import score_submission
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Chấm điểm submission theo rulebook.md §9")
     parser.add_argument("--questions", required=True)
     parser.add_argument("--answers", required=True)
