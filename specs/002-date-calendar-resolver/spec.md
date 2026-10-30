@@ -30,10 +30,9 @@ tay với định nghĩa trong `rulebook.md` §2 — không cần `004-reasoning
    ngày 31 → lấy đến hết tháng trước).
 4. **Given** `as_of_date = 2026-10-30`, **When** gọi `n_days_ago(as_of, 7)`, **Then** trả về
    `(2026-10-24, 2026-10-30)` (7 ngày liền nhau, kể cả hôm nay, ngày cuối là hôm nay).
-5. **Given** `calendar.csv` thật của `train/`, `as_of_date` bất kỳ trong năm dương chứa Tết 2024,
-   **When** gọi `tet_period(as_of, calendar_index, year=2024)`, **Then** trả về đúng khoảng ngày
-   dương từ 23 tháng Chạp (âm 2023) đến hết mùng 10 tháng Giêng (âm 2024) — tra thẳng từ dữ liệu
-   lịch âm thật trong file, không tính toán âm lịch tự chế.
+5. **Given** `calendar.csv` thật của `train/`, **When** gọi `tet_period(calendar_index, year=2024)`,
+   **Then** trả về đúng `(2024-02-02, 2024-02-19)` — 23 tháng Chạp âm 2023 đến mùng 10 tháng Giêng
+   âm 2024 — tra thẳng từ dữ liệu lịch âm thật trong file, không tính toán âm lịch tự chế.
 6. **Given** `as_of_date` nằm **sau** tháng 3 của năm nay, **When** gọi
    `month_or_quarter_without_year(as_of, month=3)`, **Then** trả về tháng 3 của **năm nay**; nếu
    `as_of_date` nằm **trước** tháng 3 (tháng 3 chưa tới), trả về tháng 3 của **năm trước**.
@@ -77,10 +76,11 @@ tay với định nghĩa trong `rulebook.md` §2 — không cần `004-reasoning
 - **FR-008**: Hệ thống MUST cung cấp `load_calendar(csv_path)` nạp `calendar.csv` 1 lần thành
   `CalendarIndex` có thể tra `(lunar_day, lunar_month, lunar_year) → ngày dương`, dùng cho các hàm
   cần lịch âm; MUST raise lỗi rõ nếu thiếu cột bắt buộc.
-- **FR-009**: Hệ thống MUST cung cấp `tet_period(as_of, calendar_index, year)` trả về khoảng ngày
+- **FR-009**: Hệ thống MUST cung cấp `tet_period(calendar_index, year)` trả về khoảng ngày
   dương từ 23 tháng Chạp (âm `year-1`) đến hết mùng 10 tháng Giêng (âm `year`), tra trực tiếp từ
-  `CalendarIndex`; trả `None` nếu năm đó ngoài phạm vi dữ liệu lịch.
-- **FR-010**: Hệ thống MUST cung cấp `comparable_before_tet(as_of, calendar_index, year)` trả về
+  `CalendarIndex`; trả `None` nếu năm đó ngoài phạm vi dữ liệu lịch. Không nhận `as_of` — khoảng
+  Tết năm Y là cố định theo `year`, không phụ thuộc "hôm nay".
+- **FR-010**: Hệ thống MUST cung cấp `comparable_before_tet(calendar_index, year)` trả về
   khoảng ngày có **cùng số ngày** với `tet_period` tương ứng, nằm ngay **trước** ngày 23 tháng
   Chạp của kỳ Tết đó — dùng cho câu hỏi "so với trước Tết".
 - **FR-011**: Hệ thống MUST cung cấp `shift_session(hour)` trả về `"sáng"` (giờ 06–13),
