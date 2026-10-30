@@ -122,6 +122,8 @@ def match_unanswerable(predicted_type: str) -> bool:
 
 
 def is_correct(truth_type: str, predicted: dict, truth_answer, alias: list) -> bool:
+    if not isinstance(predicted, dict):
+        return False
     if predicted.get("type") != truth_type:
         return False
     if truth_type == "unanswerable":

@@ -187,3 +187,9 @@ def test_is_correct_dispatches_by_type():
     assert is_correct("number", {"type": "number", "answer": 89526400}, 89526400, []) is True
     assert is_correct("number", {"type": "string", "answer": "x"}, 89526400, []) is False
     assert is_correct("unanswerable", {"type": "unanswerable", "reason": "..."}, None, []) is True
+
+
+def test_is_correct_rejects_non_dict_predicted_without_raising():
+    assert is_correct("number", "not_a_dict", 89526400, []) is False
+    assert is_correct("number", None, 89526400, []) is False
+    assert is_correct("number", ["x"], 89526400, []) is False
