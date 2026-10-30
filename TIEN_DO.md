@@ -70,5 +70,51 @@
   JSON an toàn, trùng tên table không phân biệt hoa-thường) — xem tiến độ ở
   `.superpowers/sdd/tasks/progress.md`.
 - [ ] 🔜 7 việc Important/Minor còn lại hoãn tới trước `004-reasoning-agent` — xem checklist C5.
-- [ ] 🔜 Sau khi đợt sửa cuối xong + review sạch → `finishing-a-development-branch`, rồi brainstorm
-  `002-date-calendar-resolver`.
+- [x] ✅ `finishing-a-development-branch` cho `001-data-loader` xong → tiếp tục brainstorm
+  `002-date-calendar-resolver` trên cùng nhánh `main`.
+
+## 2. ĐỢT 2026-10-30 — Brainstorm + thực thi `002-date-calendar-resolver`
+
+- [x] ✅ Brainstorm (Architectural path) — quyết định sub-project 002 là **bộ hàm tính khoảng
+  ngày thuần Python**, KHÔNG tự parse câu hỏi tiếng Việt (trách nhiệm đó thuộc
+  `004-reasoning-agent`, 002 chỉ nhận tham số đã xác định rõ). Bám đúng `rulebook.md` §2
+  "Thời gian" (đối chiếu trực tiếp cả `train/` và `public_test/`, giống nhau trừ 1 dòng
+  "Trung bình mỗi ngày thứ X" chủ động để ngoài phạm vi v1).
+- [x] ✅ Viết `specs/002-date-calendar-resolver/spec.md` (14 FR) — tự sửa 1 lỗi thiết kế lúc
+  viết plan: bỏ tham số `as_of` thừa khỏi `tet_period`/`comparable_before_tet` (khoảng Tết năm Y
+  chỉ phụ thuộc `year`, không phụ thuộc "hôm nay").
+- [x] ✅ `writing-plans`: `plan.md` + `tasks.md` (5 task T001-T005, TDD) — mọi giá trị ngày trong
+  test đã verify bằng Python thật trước khi viết (vd 2026-10-30 là thứ Sáu, Tết âm 2024 =
+  23/12 âm 2023 → 2024-02-02 dương, mùng 10 Giêng âm 2024 → 2024-02-19 dương).
+- [x] ✅ `subagent-driven-development`: thực thi đủ 5 task. Lưu ý vận hành: script
+  `sdd-workspace` của skill đụng tên (cả `001` và `002` đều có file `tasks.md`, script chỉ lấy
+  basename) — đã tạo workspace tay `.superpowers/sdd/002-date-calendar-resolver/` để tránh ghi
+  đè ledger của 001.
+  - T1 (`calendar_index.py`, 1 fix round): review tìm lỗi thật — `lunar_to_solar` bị tháng
+    nhuận ghi đè âm thầm lên tháng thường cùng `(day,month,year)` (dữ liệu thật có ở tháng
+    6/2025) — sửa bằng cách bỏ qua dòng `lunar_leap=true` khi xây index.
+  - T2 (`date_resolver.py` phần ngày/tuần, 1 fix round): review tìm lỗi thật — `n_days_ago`
+    chỉ validate giá trị (`n<1`) chưa validate kiểu (`n="5"` ra `TypeError` thay vì
+    `ValueError`) — sửa + **ra ruling áp dụng xuyên Task 3**: chỉ validate kiểu tham số phụ
+    domain-specific (n/month/quarter/hour), không validate kiểu `as_of`.
+  - T3 (`date_resolver.py` phần tháng/quý/ca, review sạch ngay): áp đúng ruling validate kiểu
+    từ T2 cho `month`/`quarter`/`hour`.
+  - T4 (`tet.py`, review sạch ngay): `tet_period`/`comparable_before_tet` tra trực tiếp
+    `CalendarIndex`, trả `None` (không raise) khi năm ngoài phạm vi calendar.csv.
+  - T5 (`__init__.py` export 14 symbol, review sạch ngay): bề mặt public cho `004` import.
+- [x] ✅ **Final whole-branch review** (model opus, tự chạy test + tự verify `tet_period` cho
+  NHIỀU năm 2023-2029 trên cả `train/` và `public_test/` calendar.csv + đối chiếu từng dòng
+  rulebook §2 của cả 2 bộ — không chỉ đọc diff) — tìm 3 Important:
+  1. `REQUIRED_COLUMNS` thiếu cột `"lunar_leap"` dù code có đọc cột đó → CSV thiếu cột sẽ
+     raise `KeyError` thô thay vì `ValueError` sạch.
+  2. Thiếu test pin biên "không sau hôm nay" đúng ngày đầu tháng/quý (logic đã đúng, chỉ
+     thiếu test — nếu sau này có regression `<=`→`<` sẽ lọt qua suite).
+  3. (Documentation-only) Khoảng ngày trả về có thể vượt qua `as_of` (vd tháng đang diễn ra) —
+     ghi rõ vào docstring: `004-reasoning-agent` phải tự lọc `<= as_of` khi dùng cho số liệu
+     phát sinh thật.
+  → 1 đợt sửa cuối (cả 3) + 1 scoped re-review, tất cả sạch, 42/42 test PASS.
+- [x] ✅ `002-date-calendar-resolver` HOÀN TẤT — 5 task + final review + 1 fix wave, không còn
+  finding mở. Xem đầy đủ ledger ở `.superpowers/sdd/002-date-calendar-resolver/progress.md`
+  (workspace xoá sau khi hoàn tất, lịch sử quyết định nằm trong các dòng "Ruling:" đã chuyển
+  vào đây).
+- [ ] 🔜 Sau `finishing-a-development-branch` → brainstorm `003-eval-harness`.

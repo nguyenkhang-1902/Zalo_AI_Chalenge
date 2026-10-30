@@ -37,3 +37,12 @@
   7. Vài case trùng tên cột/table hiếm còn sót (2 cột trùng tên y hệt lần 2, header rỗng "",
      cột chỉ khác hoa-thường).
   ⏸️ Chưa làm — sẽ làm trước khi brainstorm `004-reasoning-agent`.
+- [ ] C6. **Contract từ final review của `002-date-calendar-resolver`** (bắt buộc đọc trước khi
+  brainstorm `004-reasoning-agent`): mọi hàm tính khoảng ngày của `002` trả về **CẢ kỳ** theo
+  định nghĩa `rulebook.md` §2 (vd hỏi "tháng này" khi tháng đang diễn ra → trả đủ đến hết tháng
+  dương lịch, KHÔNG tự cắt tại `as_of`). `004-reasoning-agent` khi dùng khoảng ngày này để lọc
+  **số liệu phát sinh thực tế** (doanh thu, đơn hàng...) PHẢI tự thêm điều kiện `<= as_of` —
+  002 không làm việc này. Không áp dụng cho các câu hỏi dạng "đến hết ngày X" (đã là kỳ cố định
+  trong quá khứ, không cần lọc thêm). Xem chi tiết:
+  `specs/002-date-calendar-resolver/spec.md` + docstring `src/date_resolver/__init__.py`.
+  ⏸️ Chưa làm — ghi nhận lúc thiết kế `004-reasoning-agent`.
