@@ -23,6 +23,8 @@ def load_calendar(csv_path: str) -> CalendarIndex:
 
         index: dict[tuple[int, int, int], date] = {}
         for row in reader:
+            if row["lunar_leap"] == "true":
+                continue
             solar_date = date.fromisoformat(row["date"])
             key = (
                 int(row["lunar_day"]),
