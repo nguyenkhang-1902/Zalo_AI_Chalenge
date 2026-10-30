@@ -5,7 +5,7 @@ import csv
 from dataclasses import dataclass, field
 from datetime import date
 
-REQUIRED_COLUMNS = ("date", "lunar_day", "lunar_month", "lunar_year")
+REQUIRED_COLUMNS = ("date", "lunar_day", "lunar_month", "lunar_year", "lunar_leap")
 
 
 @dataclass

@@ -32,3 +32,14 @@ def test_missing_required_column_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError, match="thiếu cột"):
         load_calendar(str(bad_csv))
+
+
+def test_missing_lunar_leap_column_raises_value_error(tmp_path):
+    bad_csv = tmp_path / "calendar.csv"
+    bad_csv.write_text(
+        "date,lunar_day,lunar_month,lunar_year\n2024-02-10,1,1,2024\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="thiếu cột"):
+        load_calendar(str(bad_csv))

@@ -1,4 +1,9 @@
-"""Bộ hàm tính khoảng ngày theo rulebook.md §2 — xem specs/002-date-calendar-resolver/spec.md."""
+"""Bộ hàm tính khoảng ngày theo rulebook.md §2 — xem specs/002-date-calendar-resolver/spec.md.
+
+Khoảng ngày trả về là CẢ kỳ theo định nghĩa rulebook (vd tháng đang diễn ra trả
+đủ đến hết tháng dương lịch, không tự cắt tại as_of) — bên gọi (004-reasoning-agent)
+phải tự áp thêm điều kiện lọc `<= as_of` khi dùng cho số liệu phát sinh thực tế.
+"""
 from .calendar_index import CalendarIndex, load_calendar
 from .date_resolver import (
     comparable_last_month,

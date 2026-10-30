@@ -72,6 +72,29 @@ def test_quarter_without_year_uses_this_year_when_not_future():
     )
 
 
+def test_month_without_year_inclusive_when_as_of_is_first_day_of_month():
+    # hôm nay đúng ngày 1 của tháng 3 -> "chưa sau hôm nay" (đúng = hôm nay) -> năm nay
+    assert month_or_quarter_without_year(date(2026, 3, 1), month=3) == (
+        date(2026, 3, 1),
+        date(2026, 3, 31),
+    )
+
+
+def test_quarter_without_year_inclusive_when_as_of_is_first_day_of_quarter():
+    # hôm nay đúng ngày 1 của Q2 (01/04) -> năm nay
+    assert month_or_quarter_without_year(date(2026, 4, 1), quarter=2) == (
+        date(2026, 4, 1),
+        date(2026, 6, 30),
+    )
+
+
+def test_quarter_without_year_rejects_out_of_range_quarter():
+    with pytest.raises(ValueError):
+        month_or_quarter_without_year(date(2026, 10, 30), quarter=5)
+    with pytest.raises(ValueError):
+        month_or_quarter_without_year(date(2026, 10, 30), quarter=0)
+
+
 def test_month_or_quarter_requires_exactly_one_arg():
     with pytest.raises(ValueError):
         month_or_quarter_without_year(date(2026, 10, 30))
