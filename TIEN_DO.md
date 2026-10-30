@@ -117,4 +117,51 @@
   finding mở. Xem đầy đủ ledger ở `.superpowers/sdd/002-date-calendar-resolver/progress.md`
   (workspace xoá sau khi hoàn tất, lịch sử quyết định nằm trong các dòng "Ruling:" đã chuyển
   vào đây).
-- [ ] 🔜 Sau `finishing-a-development-branch` → brainstorm `003-eval-harness`.
+- [x] ✅ `finishing-a-development-branch` cho `002-date-calendar-resolver` xong → tiếp tục
+  brainstorm `003-eval-harness` trên cùng nhánh `main`.
+
+## 3. ĐỢT 2026-10-30 — Brainstorm + thực thi `003-eval-harness`
+
+- [x] ✅ Brainstorm (Architectural path) — đọc kỹ `rulebook.md` §9 "Đáp án và chấm điểm" +
+  `train/answers.jsonl` thật (3000 dòng, phát hiện field `alias` cho mã/cách viết thay thế,
+  cấu trúc khác nhau theo type: flat list cho `string`, list-lồng-list theo vị trí cho
+  `list`/`table`). Quyết định hình thái: thư viện hàm thuần + 1 CLI mỏng; report chi tiết
+  tổng + breakdown theo type và theo business.
+- [x] ✅ Viết `specs/003-eval-harness/spec.md` (16 FR) — tự sửa 1 chỗ ngay lúc viết: `alias[i]`
+  của `list`/`table` là 1 LIST mã thay thế cho vị trí đó, không phải 1 string đơn.
+- [x] ✅ `writing-plans`: `plan.md` + `tasks.md` (5 task T001-T005, TDD, 38 test dự kiến) — tự
+  sửa 2 lỗi đếm test tay + 1 lỗi hard-code `/tmp` (đổi sang `tempfile`) lúc self-review.
+- [x] ✅ `subagent-driven-development`: thực thi đủ 5 task. Lưu ý vận hành: lại gặp đụng
+  workspace do basename `tasks.md` trùng cả `001` và `002` — tạo workspace tay
+  `.superpowers/sdd/003-eval-harness/`.
+  - T1 (`matchers.py` phần number/percent/date/boolean/string, review sạch ngay): mọi ví dụ
+    test lấy nguyên văn từ `train/answers.jsonl` thật, reviewer tự grep xác nhận.
+  - T2 (`matchers.py` phần list/table/unanswerable + dispatcher, 1 fix round): review tìm lỗi
+    thật — `is_correct` gọi `predicted.get("type")` không guard `isinstance(dict)`, predicted
+    không phải dict (JSON hợp lệ nhưng không phải object) raise `AttributeError` thay vì trả
+    `False` — vi phạm FR-003. Sửa + ra ruling carry sang T4: `_load_submission` có lỗi tương tự.
+  - T3 (`report.py`, review sạch ngay).
+  - T4 (`scoring.py` + golden test TOÀN BỘ 3000 câu thật, review sạch ngay, có áp sẵn fix
+    carry từ T2: guard `isinstance(row, dict)` trong `_load_submission`).
+  - T5 (`__init__.py` export + `cli.py`, implementer tự báo DONE_WITH_CONCERNS: CLI crash
+    `UnicodeEncodeError` trên console Windows cp1252 khi in tiếng Việt — xử lý ngay trước
+    review bằng `sys.stdout.reconfigure(encoding="utf-8")` có guard `hasattr`).
+- [x] ✅ **Final whole-branch review** (model opus, tự mutate cả 8 answer type qua
+  `score_submission` end-to-end + test alias cho cả 3 type có alias + đối chiếu rulebook §9
+  từng dòng của cả 2 bộ dữ liệu) — tìm 3 Important, cả 3 đã tự verify lại bằng cách đọc trực
+  tiếp `rulebook.md`:
+  1. `_normalize_string` gộp khoảng trắng TRƯỚC khi xoá dấu câu → dữ liệu thật có dấu `-` kẹp
+     2 khoảng trắng (tên khách kèm SĐT) không khớp bản không có dấu câu.
+  2. **Thiếu hẳn luật §7** (brainstorm chỉ đọc §9, bỏ sót §7) — rulebook: "dòng có `reason`
+     không phải chuỗi không đọc được và tính như bỏ trống", áp dụng MỌI type. Đã bổ sung
+     FR-016 vào spec.md + sửa code.
+  3. `is_correct` vẫn crash được với input dị dạng khác (cột table không hashable, số khổng lồ
+     gây `OverflowError`) — cùng loại bug đã sửa 2 lần ở T2/T4, lần này bọc `try/except` ở
+     điểm dispatch chung để chặn mọi trường hợp tương lai.
+  → 1 đợt sửa cuối (cả 3) + 1 scoped re-review, tất cả sạch, 45/45 test PASS.
+- [x] ✅ `003-eval-harness` HOÀN TẤT — 5 task + final review + 1 fix wave, không còn finding
+  mở. Ledger đầy đủ đã xoá sau khi hoàn tất (quyết định "Ruling:" đã chuyển vào đây).
+- [ ] 🔜 Sau `finishing-a-development-branch` → brainstorm `004-reasoning-agent`. **Trước khi
+  bắt đầu**: xử lý checklist C2 (chọn model LLM ≤15B), C4 (xác nhận đọc rulebook.md runtime),
+  C5 (7 việc hoãn từ `001`), C6 (contract `as_of` từ `002`) — xem
+  [CHECKLIST-ZALO-DATAMATE-DUYET.md](CHECKLIST-ZALO-DATAMATE-DUYET.md).
