@@ -73,3 +73,117 @@ def test_match_string_rejects_wrong_diacritics():
 
 def test_match_string_rejects_unrelated_value():
     assert match_string("Gạch ống 8x8x18 Tuynel", "Xi măng Hà Tiên PCB40 bao 50kg", ["SP0001"]) is False
+
+
+# --- Task 2: list / table / unanswerable / dispatcher ---
+from eval_harness.matchers import is_correct, match_list, match_table, match_unanswerable
+
+
+def test_match_list_exact_with_alias_codes():
+    # q_019ec94d9799 trong train/answers.jsonl thật
+    truth = ["Cà phê sữa (M)", "Trà đào cam sả (M)", "Cà phê đen (M)"]
+    alias = [["SP0003"], ["SP0017"], ["SP0001"]]
+    assert match_list(["Cà phê sữa (M)", "Trà đào cam sả (M)", "Cà phê đen (M)"], truth, alias) is True
+
+
+def test_match_list_accepts_alias_per_position():
+    truth = ["Cà phê sữa (M)", "Trà đào cam sả (M)", "Cà phê đen (M)"]
+    alias = [["SP0003"], ["SP0017"], ["SP0001"]]
+    assert match_list(["SP0003", "SP0017", "SP0001"], truth, alias) is True
+
+
+def test_match_list_rejects_wrong_order():
+    truth = ["Cà phê sữa (M)", "Trà đào cam sả (M)", "Cà phê đen (M)"]
+    alias = [["SP0003"], ["SP0017"], ["SP0001"]]
+    assert match_list(["Trà đào cam sả (M)", "Cà phê sữa (M)", "Cà phê đen (M)"], truth, alias) is False
+
+
+def test_match_list_rejects_wrong_length():
+    truth = ["Cà phê sữa (M)", "Trà đào cam sả (M)", "Cà phê đen (M)"]
+    assert match_list(["Cà phê sữa (M)", "Trà đào cam sả (M)"], truth, [[], [], []]) is False
+
+
+def test_match_list_of_numbers():
+    assert match_list([287435200, 346554700, 309693800], [287435200, 346554700, 309693800], [[], [], []]) is True
+
+
+TABLE_TRUTH = {
+    "columns": ["khach_hang", "so_tien_no"],
+    "rows": [
+        ["Đỗ Đức An", 404500],
+        ["Dương Tâm Bích", 158600],
+        ["Phùng Hồng Nam", 126000],
+    ],
+}
+TABLE_ALIAS = [["KH0124"], ["KH0233"], ["KH0137"]]
+
+
+def test_match_table_exact_same_order():
+    predicted = {
+        "columns": ["khach_hang", "so_tien_no"],
+        "rows": [
+            ["Đỗ Đức An", 404500],
+            ["Dương Tâm Bích", 158600],
+            ["Phùng Hồng Nam", 126000],
+        ],
+    }
+    assert match_table(predicted, TABLE_TRUTH, TABLE_ALIAS) is True
+
+
+def test_match_table_row_order_does_not_matter():
+    predicted = {
+        "columns": ["khach_hang", "so_tien_no"],
+        "rows": [
+            ["Phùng Hồng Nam", 126000],
+            ["Đỗ Đức An", 404500],
+            ["Dương Tâm Bích", 158600],
+        ],
+    }
+    assert match_table(predicted, TABLE_TRUTH, TABLE_ALIAS) is True
+
+
+def test_match_table_accepts_alias_code_as_row_key():
+    predicted = {
+        "columns": ["khach_hang", "so_tien_no"],
+        "rows": [
+            ["KH0124", 404500],
+            ["KH0233", 158600],
+            ["KH0137", 126000],
+        ],
+    }
+    assert match_table(predicted, TABLE_TRUTH, TABLE_ALIAS) is True
+
+
+def test_match_table_column_order_independent_when_names_match():
+    predicted = {
+        "columns": ["so_tien_no", "khach_hang"],
+        "rows": [
+            [404500, "Đỗ Đức An"],
+            [158600, "Dương Tâm Bích"],
+            [126000, "Phùng Hồng Nam"],
+        ],
+    }
+    assert match_table(predicted, TABLE_TRUTH, TABLE_ALIAS) is True
+
+
+def test_match_table_rejects_wrong_value():
+    predicted = {
+        "columns": ["khach_hang", "so_tien_no"],
+        "rows": [
+            ["Đỗ Đức An", 999999],
+            ["Dương Tâm Bích", 158600],
+            ["Phùng Hồng Nam", 126000],
+        ],
+    }
+    assert match_table(predicted, TABLE_TRUTH, TABLE_ALIAS) is False
+
+
+def test_match_unanswerable_ignores_reason_content():
+    assert match_unanswerable("unanswerable") is True
+    assert match_unanswerable("number") is False
+
+
+def test_is_correct_dispatches_by_type():
+    assert is_correct("number", {"type": "number", "answer": 89526400}, 89526400, []) is True
+    assert is_correct("number", {"type": "string", "answer": "x"}, 89526400, []) is False
+    assert is_correct("unanswerable", {"type": "unanswerable", "reason": "..."}, None, []) is True
