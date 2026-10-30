@@ -82,6 +82,32 @@ def test_explicit_abstain_scores_zero(tmp_path):
     assert report.correct == 2999
 
 
+def test_non_string_reason_scores_zero_even_if_otherwise_correct(tmp_path):
+    rows = _load_answers_as_submission_rows()
+    rows[0]["reason"] = 123  # reason không phải chuỗi, dù answer đúng
+    submission_path = tmp_path / "submission.jsonl"
+    _write_submission(submission_path, rows)
+
+    report = score_submission(str(TRAIN_QUESTIONS), str(TRAIN_ANSWERS), str(submission_path))
+
+    assert report.abstained == 1
+    assert report.correct == 2999
+
+
+def test_unanswerable_with_non_string_reason_scores_zero(tmp_path):
+    rows = _load_answers_as_submission_rows()
+    for row in rows:
+        if row["type"] == "unanswerable":
+            row["reason"] = None
+            break
+    submission_path = tmp_path / "submission.jsonl"
+    _write_submission(submission_path, rows)
+
+    report = score_submission(str(TRAIN_QUESTIONS), str(TRAIN_ANSWERS), str(submission_path))
+
+    assert report.abstained == 1
+
+
 def test_malformed_json_line_scores_zero_without_crashing(tmp_path):
     rows = _load_answers_as_submission_rows()
     submission_path = tmp_path / "submission.jsonl"

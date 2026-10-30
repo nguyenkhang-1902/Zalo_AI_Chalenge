@@ -7,10 +7,7 @@ NUMBER_EPSILON = 1e-6
 
 
 def _normalize_string(s: str) -> str:
-    s = s.strip().lower()
-    s = re.sub(r"\s+", " ", s)
-    s = re.sub(r"[^\w\s]", "", s)
-    return s
+    return re.sub(r"\W", "", s.lower())
 
 
 def match_number(predicted, truth) -> bool:
@@ -130,18 +127,21 @@ def is_correct(truth_type: str, predicted: dict, truth_answer, alias: list) -> b
         return True
 
     predicted_answer = predicted.get("answer")
-    if truth_type == "number":
-        return match_number(predicted_answer, truth_answer)
-    if truth_type == "percent":
-        return match_percent(predicted_answer, truth_answer)
-    if truth_type == "date":
-        return match_date(predicted_answer, truth_answer)
-    if truth_type == "boolean":
-        return match_boolean(predicted_answer, truth_answer)
-    if truth_type == "string":
-        return match_string(predicted_answer, truth_answer, alias)
-    if truth_type == "list":
-        return match_list(predicted_answer, truth_answer, alias)
-    if truth_type == "table":
-        return match_table(predicted_answer, truth_answer, alias)
+    try:
+        if truth_type == "number":
+            return match_number(predicted_answer, truth_answer)
+        if truth_type == "percent":
+            return match_percent(predicted_answer, truth_answer)
+        if truth_type == "date":
+            return match_date(predicted_answer, truth_answer)
+        if truth_type == "boolean":
+            return match_boolean(predicted_answer, truth_answer)
+        if truth_type == "string":
+            return match_string(predicted_answer, truth_answer, alias)
+        if truth_type == "list":
+            return match_list(predicted_answer, truth_answer, alias)
+        if truth_type == "table":
+            return match_table(predicted_answer, truth_answer, alias)
+    except (TypeError, ValueError, OverflowError):
+        return False
     return False

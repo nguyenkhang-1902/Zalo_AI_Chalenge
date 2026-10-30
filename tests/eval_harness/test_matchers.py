@@ -75,6 +75,13 @@ def test_match_string_rejects_unrelated_value():
     assert match_string("Gạch ống 8x8x18 Tuynel", "Xi măng Hà Tiên PCB40 bao 50kg", ["SP0001"]) is False
 
 
+def test_match_string_ignores_punctuation_between_spaces():
+    # alias thật của q_1b211d642140 trong train/answers.jsonl: "Hoàng Trung Hương - 0971 618 698"
+    assert match_string(
+        "Hoàng Trung Hương 0971 618 698", "Hoàng Trung Hương", ["Hoàng Trung Hương - 0971 618 698"]
+    ) is True
+
+
 # --- Task 2: list / table / unanswerable / dispatcher ---
 from eval_harness.matchers import is_correct, match_list, match_table, match_unanswerable
 
@@ -193,3 +200,14 @@ def test_is_correct_rejects_non_dict_predicted_without_raising():
     assert is_correct("number", "not_a_dict", 89526400, []) is False
     assert is_correct("number", None, 89526400, []) is False
     assert is_correct("number", ["x"], 89526400, []) is False
+
+
+def test_is_correct_rejects_unhashable_table_columns_without_raising():
+    truth = {"columns": ["khach_hang", "so_tien_no"], "rows": [["Chị Lan", 3200000]]}
+    predicted = {"type": "table", "answer": {"columns": [["a"], ["b"]], "rows": [["Chị Lan", 3200000]]}}
+    assert is_correct("table", predicted, truth, []) is False
+
+
+def test_is_correct_rejects_huge_number_without_raising():
+    predicted = {"type": "percent", "answer": 10**400}
+    assert is_correct("percent", predicted, 12.4, []) is False

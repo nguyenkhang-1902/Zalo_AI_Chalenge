@@ -68,7 +68,10 @@ def score_submission(questions_path: str, answers_path: str, submission_path: st
         business_id = q["business_id"]
 
         pred = submission.get(qid)
-        if pred is None or pred.get("type") == "abstain":
+        has_unreadable_reason = (
+            isinstance(pred, dict) and "reason" in pred and not isinstance(pred["reason"], str)
+        )
+        if pred is None or pred.get("type") == "abstain" or has_unreadable_reason:
             points = 0
             outcome = "abstained"
         elif is_correct(truth_type, pred, truth.get("answer"), truth.get("alias")):
