@@ -36,6 +36,10 @@
   6. Số điện thoại/MST bắt đầu bằng 0 bị mất số 0 khi ép kiểu số.
   7. Vài case trùng tên cột/table hiếm còn sót (2 cột trùng tên y hệt lần 2, header rỗng "",
      cột chỉ khác hoa-thường).
+  8. (Phát hiện 2026-10-30, lúc chạy full suite cho `002`) `Pandas4Warning` tại
+     `build_business_db.py:97` — dựng `DataFrame` từ rows lệch độ dài ở path KHÁC path
+     raw-group-merge đã fix (T10/001), hiện pandas tự pad NaN nhưng cảnh báo sẽ raise ở bản sau.
+     Không fail test, chỉ warning — 55 lần lúc chạy golden test trên `train/` thật.
   ⏸️ Chưa làm — sẽ làm trước khi brainstorm `004-reasoning-agent`.
 - [ ] C6. **Contract từ final review của `002-date-calendar-resolver`** (bắt buộc đọc trước khi
   brainstorm `004-reasoning-agent`): mọi hàm tính khoảng ngày của `002` trả về **CẢ kỳ** theo
