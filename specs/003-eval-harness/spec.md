@@ -92,6 +92,12 @@ theo answer type và theo business, để biết ngay đang yếu ở đâu.
   --answers ... --submission ...`) in ra report dễ đọc, dùng lại thẳng `score_submission`.
 - **FR-015**: Hệ thống MUST NOT chứa logic rẽ nhánh theo `business_id`/`question_id` cụ thể nào
   (rule 4 cuộc thi) — chỉ dùng trong test/golden test.
+- **FR-016** (phát hiện lúc final review, đọc lại rulebook §7): Hệ thống MUST tính 0 điểm (bỏ
+  trống, không raise, không chấm theo type) cho MỌI dòng `submission.jsonl` có field `reason`
+  mà giá trị KHÔNG phải chuỗi (`string`) — đúng nguyên văn rulebook §7: *"dòng có `reason` không
+  phải chuỗi không đọc được và tính như bỏ trống"*. Áp dụng cho mọi answer type, không riêng
+  `unanswerable` (vd 1 dòng type `number` đúng giá trị nhưng có `"reason": 123` vẫn tính 0, không
+  phải +1).
 
 ### Key Entities
 
