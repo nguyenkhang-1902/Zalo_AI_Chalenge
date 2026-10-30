@@ -8,22 +8,26 @@
 
 ## C. 💡 Quyết + đầu vào (cần Khang quyết hoặc cấp thông tin)
 
-- [ ] C1. **Review `specs/001-data-loader/spec.md`** — xác nhận đặc tả sub-project A (data loader
-  README-anchored → DuckDB) đúng ý trước khi sang `plan.md`/`tasks.md`. ⏸️ chờ Khang.
-- [ ] C2. **Chọn model LLM cụ thể cho sub-project C** (reasoning agent, ≤15B tổng tham số) — chưa
-  cần quyết ngay, nhưng cần quyết trước khi brainstorm sub-project `004-reasoning-agent`. ⏸️ chờ
-  tới lúc đó.
+- [x] ✅ C1. **Review `specs/001-data-loader/spec.md`** — Khang duyệt ("tạm thời chưa phát hiện
+  thêm gì cần sửa"), đã chạy `writing-plans` + `subagent-driven-development`, `001-data-loader`
+  hoàn tất.
+- [x] ✅ C2. **Model LLM cho `004-reasoning-agent`** — Khang chọn (2026-10-30):
+  **Qwen2.5-14B-Instruct** (hoặc bản Qwen3-14B mới hơn nếu có lúc build) làm model ĐÍCH chạy
+  trong Docker nộp thật (multilingual tiếng Việt + code-gen tốt nhất ở tier 14B, tận dụng gần
+  hết ngân sách 15B). Quyết định kèm theo: dev/test logic bằng **Qwen2.5-7B-Instruct chạy local**
+  (máy công ty RTX 3050 6GB không đủ VRAM ổn định cho 14B), chỉ swap sang bản 14B lúc đóng Docker
+  cuối (`006-docker-packaging`) — vì vậy **004 PHẢI thiết kế model-agnostic** (tên model qua
+  config/env var, không hard-code), không chặn việc đổi model sau này.
 - [x] ✅ C3. **Công thức chấm điểm** — đã tìm thấy trong `train/rulebook.md` §9 "Đáp án và chấm
   điểm" (file có sẵn trong dataset, không cần hỏi portal): đúng `+1`, sai `−1`, bỏ trống `0`;
   mỗi `type` có format JSON cố định (number/percent/date/boolean/string/list/table/unanswerable);
   số/percent khớp tuyệt đối (percent tròn 2 chữ số), string không phân biệt hoa-thường/khoảng
   trắng nhưng dấu tiếng Việt phải đúng, list đúng thứ tự, table so theo tên cột. Dùng thẳng §9 làm
   spec cho `003-eval-harness`, không cần giả định nữa.
-- [ ] C4. **`rulebook.md` khác nhau giữa `train` và `public_test`** (train thiếu vài luật ngành
-  "Mẹ và bé/Sửa xe/Điện thoại", public_test thiếu vài luật "giá nhập bình quân/tồn đơn vị lớn") →
-  xác nhận với Khang: pipeline sẽ **luôn đọc `rulebook.md` kèm theo từng bộ test lúc runtime**
-  (không bake cứng 1 bản vào Docker image), vì `private_test` nhiều khả năng có thêm ngành/luật
-  mới. ⏸️ chờ xác nhận hướng này đúng ý trước khi sang sub-project `004-reasoning-agent`.
+- [x] ✅ C4. **`rulebook.md` khác nhau giữa `train` và `public_test`** — Khang xác nhận
+  (2026-10-30): pipeline luôn đọc `rulebook.md` kèm theo từng bộ test lúc runtime, không bake
+  cứng vào Docker image. Đã implement đúng hướng này từ `001` (passthrough copy trong
+  `build_all.py`), `002`/`003` không đụng `rulebook.md` trực tiếp nhưng không vi phạm.
 - [ ] C5. **7 việc Important/Minor từ final review của `001-data-loader`, hoãn tới trước
   `004-reasoning-agent`** (không chặn `002`/`003`) — chi tiết đủ trong
   `.superpowers/sdd/tasks/progress.md` phần "FINAL WHOLE-BRANCH REVIEW":
