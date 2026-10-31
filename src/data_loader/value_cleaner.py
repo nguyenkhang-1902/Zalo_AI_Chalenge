@@ -26,9 +26,22 @@ def _to_number(value) -> float | None:
     return None
 
 
+def _looks_like_leading_zero_code(non_null: list) -> bool:
+    """SĐT/MST VN quy ước giữ số 0 đầu (vd "0933201672") -- không ai viết số lượng/tiền có số 0
+    đệm đầu, nên tỉ lệ cao giá trị dạng text bắt đầu bằng "0" (độ dài > 1) là tín hiệu đủ mạnh để
+    coi cả cột là mã định danh, không ép numeric."""
+    texts = [str(v).strip() for v in non_null if not isinstance(v, (int, float))]
+    if not texts:
+        return False
+    zero_prefixed = sum(1 for t in texts if t.startswith("0") and len(t) > 1)
+    return zero_prefixed / len(texts) >= _RAW_RATIO_THRESHOLD
+
+
 def clean_numeric_column(values: list) -> tuple[list, str]:
     non_null = [v for v in values if v is not None and str(v).strip() != ""]
     if not non_null:
+        return list(values), "raw"
+    if _looks_like_leading_zero_code(non_null):
         return list(values), "raw"
     parsed = [_to_number(v) for v in non_null]
     ok_ratio = sum(p is not None for p in parsed) / len(non_null)

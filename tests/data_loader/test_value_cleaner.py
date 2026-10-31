@@ -57,6 +57,28 @@ def test_clean_numeric_column_handles_thousand_separator_mixed_with_plain_number
     assert cleaned == [42000.0, 51000.0, 45000.0, None]
 
 
+def test_clean_numeric_column_keeps_leading_zero_phone_numbers_as_text():
+    # Dữ liệu thật train/data/biz_108/DanhSachKhachHang.xlsx, cột "Điện thoại" -- hiện bị ép
+    # thành float (933201672.0), mất số 0 đầu.
+    values = ["0933201672", "0919331756", "0975706068", "0707409323", "0900683501"]
+
+    cleaned, dtype = clean_numeric_column(values)
+
+    assert dtype == "raw"
+    assert cleaned == values
+
+
+def test_clean_numeric_column_still_converts_plain_quantities_with_a_single_zero():
+    # "0" (số lượng 0) lẫn với số thường không có số 0 đầu -- KHÔNG được bị coi là leading-zero
+    # code, vẫn phải ép numeric như trước.
+    values = ["0", "150", "42"]
+
+    cleaned, dtype = clean_numeric_column(values)
+
+    assert dtype == "numeric"
+    assert cleaned == [0.0, 150.0, 42.0]
+
+
 def test_clean_numeric_column_falls_back_to_raw_when_mostly_non_numeric():
     values = ["Đã hoàn thành", "Đã huỷ", "Đang giao"]
 
