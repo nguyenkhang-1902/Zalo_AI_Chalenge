@@ -36,7 +36,13 @@
   3. Header-locator fallback chọn nhầm dòng với sheet chỉ có 1 cột có dữ liệu.
   4. 7/44 README viết dạng văn xuôi, không theo format `## Cột trong` — mất lợi thế README-driven.
   5. Period-series chia theo SHEET trong 1 workbook (không phải theo FILE) chưa được gộp — FR-011
-     cần mở rộng, ảnh hưởng ~209 câu hỏi ở 3 business.
+     cần mở rộng. **Đính chính 2026-10-31** (quét lại đủ toàn bộ `.xlsx`, lần trước bị crash giữa
+     đường ở `biz_116`): ảnh hưởng **15 business**, không phải 3 như ghi nhận gốc —
+     `train`: biz_102, 103, 105 (2 file), 112, 115, 117, 118, 119, 120, 122, 128 (11 business);
+     `public_test`: dev_004, dev_012, dev_013 (2 file), dev_014 (4 business). `dev_014` có thêm
+     1 sheet lạc "Ghi tắt" trộn giữa các sheet kỳ — fix phải tách được sheet khớp pattern kỳ khỏi
+     sheet không khớp trong cùng 1 file. Các workbook nhiều sheet KHÔNG phải period-series (sheet
+     là bảng khác nhau, không đụng fix này): biz_109, biz_116, biz_121, dev_003, dev_013/QuanLy.xlsx.
   6. Số điện thoại/MST bắt đầu bằng 0 bị mất số 0 khi ép kiểu số.
   7. Vài case trùng tên cột/table hiếm còn sót (2 cột trùng tên y hệt lần 2, header rỗng "",
      cột chỉ khác hoa-thường).
