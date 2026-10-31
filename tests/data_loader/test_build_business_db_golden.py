@@ -53,7 +53,16 @@ def test_merges_period_sheets_within_a_single_file_for_biz_102(tmp_path: Path):
 
 def test_merges_period_sheets_across_two_files_for_biz_105(tmp_path: Path):
     """Finding #5(b): biz_105 có 2 file (SoBanHang_1.xlsx 12 sheet + SoBanHang_2026.xlsx 5 sheet)
-    cùng khai cột giống nhau trong README -- phải gộp XUYÊN FILE thành 1 table duy nhất."""
+    cùng khai cột giống nhau trong README -- phải gộp XUYÊN FILE thành 1 table duy nhất.
+
+    Lưu ý: stem "SoBanHang_1"/"SoBanHang_2026" của business CỤ THỂ này đã tự khớp luật
+    hậu-tố-tên-FILE-là-số CÓ TỪ TRƯỚC (`_is_period_series`, FR-011 gốc) -- common prefix
+    "SoBanHang_", cả 2 hậu tố đều bắt đầu bằng digit. Vì vậy test này PASS được cả trên path cũ
+    (trước Task 6), không riêng path sheet-name mới của Task 6 -- nó là 1 real-data regression
+    guard hợp lệ cho Finding #5(b) (file khác nhau, README khai cùng cột), nhưng KHÔNG cô lập/khoá
+    riêng path gộp-xuyên-file-chỉ-nhờ-sheet-name mới; path đó được khoá riêng bởi test đơn vị
+    synthetic `test_groups_sheets_across_different_file_names_sharing_period_sheet_names` trong
+    test_schema_grouping.py (dùng 2 tên file KHÔNG khớp luật hậu tố số)."""
     business_dir = PROJECT_ROOT / "train" / "data" / "biz_105"
     assert business_dir.exists(), "Cần có dữ liệu thật train/data/biz_105"
 
@@ -77,6 +86,22 @@ def test_merges_period_sheets_for_dev_014_without_readme_and_excludes_stray_shee
         t for t in summary["tables"] if t["table_name"].startswith("SoBanHang") and len(t["source_files"]) > 1
     ]
     assert len(so_ban_hang_tables) == 1, f"Phải có đúng 1 table gộp theo kỳ, hiện ra: {summary['tables']}"
+    # Chốt đúng 15 sheet period gộp vào, không chỉ ">1" -- nếu "Ghi tắt" lỡ bị kéo vào gộp (lẫn
+    # sheet lạc vào nhóm period, hoặc 1 trong 15 sheet period rơi khỏi nhóm), con số này đổi và
+    # test này phải FAIL, không được lọt qua im lặng chỉ vì vẫn còn "đúng 1 table".
+    assert len(so_ban_hang_tables[0]["source_files"]) == 15, (
+        f"Phải gộp đúng 15 sheet period, hiện ra: {so_ban_hang_tables[0]['source_files']}"
+    )
+
+    standalone_ghi_tat = [
+        t for t in summary["tables"] if t["table_name"].startswith("SoBanHang") and len(t["source_files"]) == 1
+    ]
+    # Sheet "Ghi tắt" KHÔNG khớp pattern kỳ -- phải đứng riêng thành 1 table 1-source_file, không
+    # bị âm thầm nuốt vào nhóm gộp phía trên (nếu bị nuốt, danh sách này sẽ rỗng).
+    assert len(standalone_ghi_tat) == 1, (
+        f"Sheet 'Ghi tắt' phải đứng riêng thành đúng 1 table standalone, hiện ra: {summary['tables']}"
+    )
+    assert len(standalone_ghi_tat[0]["source_files"]) == 1
 
 
 def test_rerun_is_idempotent(tmp_path: Path):

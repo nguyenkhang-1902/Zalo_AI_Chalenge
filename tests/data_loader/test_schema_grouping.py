@@ -75,6 +75,26 @@ def test_groups_sheets_sharing_a_single_file_by_period_sheet_name():
     assert merged.source_files == ["DonHang_ChiTiet.xlsx", "DonHang_ChiTiet.xlsx"]
 
 
+def test_groups_sheets_across_different_file_names_sharing_period_sheet_names():
+    # Cô lập path gộp-XUYÊN-FILE-chỉ-nhờ-sheet-name mới của Task 6, tách biệt khỏi path hậu-tố-
+    # tên-FILE-là-số có từ trước (FR-011 gốc): "DuLieuBanHangA"/"DuLieuBanHangB" có common prefix
+    # "DuLieuBanHang" nhưng hậu tố "A"/"B" KHÔNG phải số -> _is_period_series trả False, nên nếu
+    # test này pass thì chỉ có thể nhờ tín hiệu sheet_name khớp pattern kỳ, không phải nhờ path cũ
+    # (khác với test_merges_period_sheets_across_two_files_for_biz_105 ở test_build_business_db_
+    # golden.py, nơi stem thật "SoBanHang_1"/"SoBanHang_2026" tình cờ VẪN khớp luật hậu tố số cũ).
+    jan = _table("DuLieuBanHangA.xlsx", {"Mã": ["A1"], "Tiền": [1000]})
+    jan.sheet_name = "T01_2025"
+    feb = _table("DuLieuBanHangB.xlsx", {"Mã": ["B1"], "Tiền": [2000]})
+    feb.sheet_name = "T02_2025"
+
+    result = group_same_schema_files([jan, feb])
+
+    assert len(result) == 1
+    merged = result[0]
+    assert len(merged.frame) == 2
+    assert merged.source_files == ["DuLieuBanHangA.xlsx", "DuLieuBanHangB.xlsx"]
+
+
 def test_does_not_pull_a_non_period_sheet_into_the_period_group():
     # Mô phỏng dev_014: sheet "Ghi tắt" tình cờ CÙNG schema với các sheet kỳ, nhưng tên sheet
     # không khớp pattern kỳ -- không được bị kéo vào nhóm gộp.
