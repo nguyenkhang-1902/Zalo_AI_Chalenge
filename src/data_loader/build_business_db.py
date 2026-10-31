@@ -29,16 +29,19 @@ logger = logging.getLogger(__name__)
 
 
 def _build_header(header_row: tuple) -> list[str]:
-    """Tên cột từ dòng header thô, đổi tên None -> col_i và chống trùng tên (vd 'Ghi chú' x2)."""
-    seen: dict[str, int] = {}
+    """Tên cột từ dòng header thô, đổi tên None -> col_i và chống trùng tên (vd 'Ghi chú' x2,
+    hoặc 'Ten'/'ten' lệch hoa-thường -- DuckDB không phân biệt hoa/thường tên cột kể cả khi quote,
+    nên phải casefold khi so trùng, giống _dedupe_table_names đã làm cho tên table). Tên sinh ra để
+    dedupe cũng được kiểm trong CÙNG 1 set, để không đụng 1 tên gốc đã có sẵn trong header."""
+    seen: set[str] = set()
     header: list[str] = []
     for i, c in enumerate(header_row):
         name = str(c).strip() if c is not None else f"col_{i}"
-        if name in seen:
-            seen[name] += 1
-            name = f"{name}_{seen[name]}"
-        else:
-            seen[name] = 1
+        base, n = name, 1
+        while name.casefold() in seen:
+            n += 1
+            name = f"{base}_{n}"
+        seen.add(name.casefold())
         header.append(name)
     return header
 

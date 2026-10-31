@@ -6,7 +6,12 @@ import numpy as np
 import openpyxl
 import pandas as pd
 
-from data_loader.build_business_db import _apply_value_cleaning, _dedupe_table_names, build_business
+from data_loader.build_business_db import (
+    _apply_value_cleaning,
+    _build_header,
+    _dedupe_table_names,
+    build_business,
+)
 from data_loader.models import LoadedTable
 
 
@@ -65,3 +70,19 @@ def test_build_business_writes_schema_json_with_time_of_day_raw_column(tmp_path:
     written = json.loads((tmp_path / "out" / "biz.schema.json").read_text(encoding="utf-8"))
     gio = next(c for c in written["tables"][0]["columns"] if c["name"] == "Giờ")
     assert gio["sample_values"] == ["08:30:00"]
+
+
+def test_build_header_dedupes_case_insensitively():
+    # DuckDB không phân biệt hoa/thường tên cột (giống _dedupe_table_names đã làm cho table) --
+    # "Ten" và "ten" phải bị coi là trùng.
+    header = _build_header(("Ten", "ten", "Ghi chú", "Ghi chú"))
+
+    assert header == ["Ten", "ten_2", "Ghi chú", "Ghi chú_2"]
+
+
+def test_build_header_avoids_colliding_with_an_existing_original_name():
+    # Tên sinh ra để dedupe ("Ten_2") không được đụng 1 tên gốc đã có sẵn trong header.
+    header = _build_header(("Ten", "Ten", "Ten_2"))
+
+    assert header == ["Ten", "Ten_2", "Ten_2_2"]
+    assert len({h.casefold() for h in header}) == 3
