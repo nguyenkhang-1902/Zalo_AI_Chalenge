@@ -1,6 +1,6 @@
 # ZALO AI CHALLENGE — DATAMATE — NHẬT KÝ TIẾN ĐỘ & HƯỚNG DẪN TIẾP TỤC
 
-> Cập nhật: **2026-10-29**. Mở file này đầu tiên là biết đang ở đâu và làm gì tiếp.
+> Cập nhật: **2026-10-31**. Mở file này đầu tiên là biết đang ở đâu và làm gì tiếp.
 > Mọi điểm chờ người quyết định đã gom về file [CHECKLIST-ZALO-DATAMATE-DUYET.md](CHECKLIST-ZALO-DATAMATE-DUYET.md).
 
 ## 📅 Deadline (ghi lại từ rule BTC)
@@ -165,3 +165,67 @@
   bắt đầu**: xử lý checklist C2 (chọn model LLM ≤15B), C4 (xác nhận đọc rulebook.md runtime),
   C5 (7 việc hoãn từ `001`), C6 (contract `as_of` từ `002`) — xem
   [CHECKLIST-ZALO-DATAMATE-DUYET.md](CHECKLIST-ZALO-DATAMATE-DUYET.md).
+
+## 4. ĐỢT 2026-10-31 — Sửa C5 (8 finding hoãn từ 001-data-loader)
+
+8 task hardening (`.superpowers/sdd/c5-hardening-tasks/`), chạy tuần tự trên `main`, mỗi task 1
+commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
+
+- [x] ✅ **Task 1** (`d9777c2`) — Finding #1 (giờ trong ngày bị cắt mất khi parse cột ngày có
+  giờ) + Finding #2 (cột `date` lưu VARCHAR trong DuckDB, không CAST) — giữ `time`/`datetime`
+  object gốc khi clean, map đúng sang kiểu DuckDB native (`DATE`/`TIMESTAMP`) khi viết, không
+  còn ISO string.
+- [x] ✅ **Task 2** (`d436a00`, review fix `5a24b16`) — Finding #6 (SĐT/MST bắt đầu bằng 0 mất
+  số 0 khi ép kiểu số) — giữ cột dạng text khi tỷ lệ giá trị có số 0 đứng đầu vượt ngưỡng, tính
+  trên TOÀN BỘ giá trị non-null và loại trừ số có phần thập phân khỏi check.
+- [x] ✅ **Task 3** (`ed4affa`) — Finding #3 (header-locator fallback chọn nhầm dòng caption báo
+  cáo khi sheet chỉ có 1 cột có dữ liệu) — bỏ qua dòng caption trong fallback heuristic.
+- [x] ✅ **Task 4** (`3ac29af`) — Finding #7 (vài case trùng tên cột/table còn sót: 2 cột trùng
+  tên y hệt lần 2, header rỗng `""`, cột chỉ khác hoa-thường) — dedupe tên cột theo casefold, so
+  cả với tên gốc (không chỉ tên đã dedupe).
+- [x] ✅ **Task 5** (`ae5f9f9`, test `51a7994`) — Finding #8 (`Pandas4Warning` khi dựng
+  `DataFrame` từ rows lệch độ dài ở path khác path raw-group-merge) — pad/truncate rows đúng độ
+  dài header TRƯỚC khi dựng `DataFrame`, không còn để pandas tự pad NaN kèm warning.
+- [x] ✅ **Task 6** (`5f37a7a`, test strengthen `69aba00`) — Finding #5 (period-series chia theo
+  SHEET trong 1 workbook, không chỉ theo FILE, ảnh hưởng 15 business) — gộp period-series cả
+  trong-file (`_group_raw_period_series`, raw-level) và xuyên-file (`group_same_schema_files`,
+  post-clean), tách sheet lạc không khớp pattern kỳ (vd "Ghi tắt") ra khỏi nhóm gộp.
+- [x] ✅ **Task 7** (`88c6b84`) — Finding #4 (7/44 README viết dạng văn xuôi, không theo format
+  `## Cột trong`) — xác nhận KHÔNG cần sửa README parser: cả 7 business (`biz_106`, `biz_109`,
+  `biz_123`, `biz_124`, `dev_003`, `dev_006`, `dev_014`) đã tự fallback qua header-locator
+  heuristic (không cần cột từ README) và vẫn load được bảng hợp lệ sau fix Task 3 — test mới
+  parametrize 7/7 PASSED.
+- [x] ✅ **Task 8** — re-verify toàn bộ, KHÔNG sửa thêm code
+  (`.superpowers/sdd/c5-hardening-tasks/task-8-report.md`), số liệu thật:
+  - **Step 1** (`pytest tests/data_loader/ -v`, foreground, không xdist, 60 test collected):
+    **59 passed, 1 failed** trong 648.78s (0:10:48). Fail duy nhất:
+    `test_build_all_golden.py::test_builds_entire_train_dataset_within_time_budget` —
+    `elapsed 123.1s` so budget 120s (SC-003) — xem Finding mới #9 dưới, KHÔNG phải regression
+    của 8 fix trên (test vẫn khẳng định `len(results)==30` và mọi business `ok` trước khi so
+    thời gian — SC-001 giữ nguyên).
+  - **Step 2** (`build_all` thật trên toàn bộ `train/` + `public_test/`, promote
+    `pandas.errors.Pandas4Warning` thành lỗi cứng qua `warnings.simplefilter`): script chạy
+    xong KHÔNG lỗi/không warning nào sót — `train: 30 business, not-ok: {}`;
+    `public_test: 14 business, not-ok: {}` (SC-001 + Finding #8 xác nhận bằng dữ liệu thật).
+  - **Step 3** (số table Finding #5, đọc trực tiếp `*.schema.json` của kết quả Step 2):
+    `biz_102` → đúng 1 table `DonHang_ChiTiet` (gộp từ 18 source_files, cộng 1 table riêng
+    `DanhSachQuyDoi__Sheet1` không liên quan); `biz_105` → đúng 1 table `SoBanHang` (gộp từ 17
+    source_files xuyên 2 file `SoBanHang_1.xlsx`+`SoBanHang_2026.xlsx`, cộng 4 table riêng khác
+    không liên quan); `dev_014` → đúng 1 table `SoBanHang` (gộp theo kỳ) + đúng 1 table riêng
+    `SoBanHang__Ghi tắt` (sheet lạc, không gộp), cộng 4 table riêng khác không liên quan — khớp
+    100% kỳ vọng brief, không phát sinh giới hạn mới (Task 6 Step 8 và Task 7 cũng không ghi
+    nhận giới hạn mới).
+
+- [ ] 🔜 **Finding mới #9** (phát hiện 2026-10-30→31, ngoài phạm vi 8 finding C5, KHÔNG fix
+  trong task này) — ngân sách 120s của golden test
+  `test_builds_entire_train_dataset_within_time_budget` (SC-003) quá sát trong môi trường chạy
+  nhiều subagent song song kéo dài nhiều giờ: quan sát lặp lại nhiều lần xuyên suốt cả 8 task
+  (99.7s, 123.1s, 134.8s, 148.9s, 155.8s, 162s, 168.7s) — và lỗi này CŨNG xảy ra trên baseline
+  CHƯA sửa gì (`a4feb96`), xác nhận độc lập bằng git-stash A/B testing bởi cả Task 1 và Task 3
+  → KHÔNG phải regression của 8 fix C5, mà là máy/môi trường bị áp lực CPU/RAM tích lũy do chạy
+  nhiều subagent song song nhiều giờ trong session này. **Việc cần làm**: đo lại SC-003 trên máy
+  rảnh (không chạy song song việc khác) để biết số liệu thật, rồi Khang quyết giữ ngân sách 120s
+  hay nới ra. Đã ghi vào `CHECKLIST-ZALO-DATAMATE-DUYET.md` dưới dạng mục con ⚠️ của C5, chờ
+  Khang quyết riêng.
+- [x] ✅ `CHECKLIST-ZALO-DATAMATE-DUYET.md` mục C5 đã đóng (`[x] ✅`), kèm tóm tắt 1 dòng/finding
+  + số liệu verify ở trên; Finding mới #9 giữ lại dưới dạng mục con ⚠️, không xoá.

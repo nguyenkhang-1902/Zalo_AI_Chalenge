@@ -28,29 +28,46 @@
   (2026-10-30): pipeline luôn đọc `rulebook.md` kèm theo từng bộ test lúc runtime, không bake
   cứng vào Docker image. Đã implement đúng hướng này từ `001` (passthrough copy trong
   `build_all.py`), `002`/`003` không đụng `rulebook.md` trực tiếp nhưng không vi phạm.
-- [ ] C5. **7 việc Important/Minor từ final review của `001-data-loader`, hoãn tới trước
-  `004-reasoning-agent`** (không chặn `002`/`003`) — chi tiết đủ trong
-  `.superpowers/sdd/tasks/progress.md` phần "FINAL WHOLE-BRANCH REVIEW":
-  1. Giờ trong ngày bị cắt mất khi parse cột ngày có giờ (ảnh hưởng câu hỏi ca sáng/chiều).
-  2. Cột "date" lưu VARCHAR trong DuckDB, không CAST — SQL dùng EXTRACT()/date function sẽ lỗi.
-  3. Header-locator fallback chọn nhầm dòng với sheet chỉ có 1 cột có dữ liệu.
-  4. 7/44 README viết dạng văn xuôi, không theo format `## Cột trong` — mất lợi thế README-driven.
-  5. Period-series chia theo SHEET trong 1 workbook (không phải theo FILE) chưa được gộp — FR-011
-     cần mở rộng. **Đính chính 2026-10-31** (quét lại đủ toàn bộ `.xlsx`, lần trước bị crash giữa
-     đường ở `biz_116`): ảnh hưởng **15 business**, không phải 3 như ghi nhận gốc —
+- [x] ✅ C5. **8 việc Important/Minor từ final review của `001-data-loader`** — ĐÃ SỬA +
+  RE-VERIFY đầy đủ trên dữ liệu thật 2026-10-31 (8 task hardening, chi tiết số liệu ở
+  `TIEN_DO.md` mục 4, ledger đầy đủ `.superpowers/sdd/c5-hardening-tasks/`):
+  1. ✅ Giờ trong ngày bị cắt mất khi parse cột ngày có giờ — sửa Task 1 (`d9777c2`).
+  2. ✅ Cột "date" lưu VARCHAR trong DuckDB, không CAST — sửa Task 1 (`d9777c2`), nay là
+     `DATE`/`TIMESTAMP` native.
+  3. ✅ Header-locator fallback chọn nhầm dòng với sheet chỉ có 1 cột có dữ liệu — sửa Task 3
+     (`ed4affa`).
+  4. ✅ 7/44 README viết dạng văn xuôi — xác nhận Task 7 (`88c6b84`): không cần sửa README
+     parser, cả 7 business vẫn load đúng qua fallback header-locator sau fix #3 — 7/7 PASSED.
+  5. ✅ Period-series chia theo SHEET trong 1 workbook (15 business ảnh hưởng, xem đính chính
+     2026-10-31 dưới) chưa được gộp — sửa Task 6 (`5f37a7a` + `69aba00`). Verify thật trên dữ
+     liệu thật (Task 8): `biz_102` → 1 table `DonHang_ChiTiet` (18 source_files); `biz_105` →
+     1 table `SoBanHang` (17 source_files, xuyên 2 file); `dev_014` → 1 table `SoBanHang` gộp +
+     1 table riêng `SoBanHang__Ghi tắt` cho sheet lạc — khớp 100% kỳ vọng.
+     **Đính chính 2026-10-31** (quét lại đủ toàn bộ `.xlsx`, lần trước bị crash giữa đường ở
+     `biz_116`): ảnh hưởng **15 business**, không phải 3 như ghi nhận gốc —
      `train`: biz_102, 103, 105 (2 file), 112, 115, 117, 118, 119, 120, 122, 128 (11 business);
-     `public_test`: dev_004, dev_012, dev_013 (2 file), dev_014 (4 business). `dev_014` có thêm
-     1 sheet lạc "Ghi tắt" trộn giữa các sheet kỳ — fix phải tách được sheet khớp pattern kỳ khỏi
-     sheet không khớp trong cùng 1 file. Các workbook nhiều sheet KHÔNG phải period-series (sheet
-     là bảng khác nhau, không đụng fix này): biz_109, biz_116, biz_121, dev_003, dev_013/QuanLy.xlsx.
-  6. Số điện thoại/MST bắt đầu bằng 0 bị mất số 0 khi ép kiểu số.
-  7. Vài case trùng tên cột/table hiếm còn sót (2 cột trùng tên y hệt lần 2, header rỗng "",
-     cột chỉ khác hoa-thường).
-  8. (Phát hiện 2026-10-30, lúc chạy full suite cho `002`) `Pandas4Warning` tại
-     `build_business_db.py:97` — dựng `DataFrame` từ rows lệch độ dài ở path KHÁC path
-     raw-group-merge đã fix (T10/001), hiện pandas tự pad NaN nhưng cảnh báo sẽ raise ở bản sau.
-     Không fail test, chỉ warning — 55 lần lúc chạy golden test trên `train/` thật.
-  ⏸️ Chưa làm — sẽ làm trước khi brainstorm `004-reasoning-agent`.
+     `public_test`: dev_004, dev_012, dev_013 (2 file), dev_014 (4 business). Các workbook nhiều
+     sheet KHÔNG phải period-series (không đụng fix này): biz_109, biz_116, biz_121, dev_003,
+     dev_013/QuanLy.xlsx.
+  6. ✅ Số điện thoại/MST bắt đầu bằng 0 bị mất số 0 khi ép kiểu số — sửa Task 2 (`d436a00`,
+     review fix `5a24b16`).
+  7. ✅ Vài case trùng tên cột/table hiếm còn sót (2 cột trùng tên y hệt lần 2, header rỗng "",
+     cột chỉ khác hoa-thường) — sửa Task 4 (`3ac29af`).
+  8. ✅ `Pandas4Warning` tại `build_business_db.py:97` khi dựng `DataFrame` từ rows lệch độ dài
+     — sửa Task 5 (`ae5f9f9` + `51a7994`). Verify thật Task 8: `build_all` full `train/` +
+     `public_test/` với `Pandas4Warning` promote thành lỗi cứng → chạy xong KHÔNG lỗi.
+  **Verify tổng (Task 8, 2026-10-31)**: `pytest tests/data_loader/` → **59 passed, 1 failed**
+  (fail là Finding mới #9 ⚠️ dưới, không phải regression); `build_all` thật trên `train` +
+  `public_test` → `train: 30 business, not-ok: {}` / `public_test: 14 business, not-ok: {}`
+  (SC-001 giữ nguyên, không business nào crash).
+  - [ ] ⚠️ **Finding mới #9 (ngoài phạm vi C5, phát hiện 2026-10-30→31, KHÔNG fix trong Task 8)**
+    — ngân sách 120s của golden test `test_builds_entire_train_dataset_within_time_budget`
+    (SC-003) quá sát khi máy chạy nhiều subagent song song kéo dài nhiều giờ — quan sát lặp lại
+    nhiều lần (99.7s, 123.1s, 134.8s, 148.9s, 155.8s, 162s, 168.7s) xuyên suốt cả 8 task hardening.
+    CŨNG fail trên baseline CHƯA sửa gì (`a4feb96`), xác nhận độc lập bằng git-stash A/B testing
+    bởi cả Task 1 và Task 3 → môi trường/máy bị áp lực CPU/RAM tích lũy, KHÔNG phải code
+    regression của 8 fix C5. Cần đo lại SC-003 trên máy rảnh, Khang quyết giữ 120s hay nới ngân
+    sách.
 - [ ] C6. **Contract từ final review của `002-date-calendar-resolver`** (bắt buộc đọc trước khi
   brainstorm `004-reasoning-agent`): mọi hàm tính khoảng ngày của `002` trả về **CẢ kỳ** theo
   định nghĩa `rulebook.md` §2 (vd hỏi "tháng này" khi tháng đang diễn ra → trả đủ đến hết tháng
