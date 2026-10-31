@@ -78,9 +78,9 @@ def _apply_value_cleaning(frame: pd.DataFrame) -> dict[str, str]:
             continue
 
         cleaned, dtype = parse_vn_date_column(values)
-        if dtype == "date":
+        if dtype in ("date", "datetime"):
             frame[col] = cleaned
-            column_dtypes[col] = "date"
+            column_dtypes[col] = dtype
         else:
             column_dtypes[col] = "raw"
     return column_dtypes

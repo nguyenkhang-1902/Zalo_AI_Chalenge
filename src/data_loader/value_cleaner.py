@@ -126,9 +126,9 @@ def parse_vn_date_column(values: list) -> tuple[list, str]:
     if not non_null:
         return list(values), "raw"
 
-    def _parse_one(v) -> date | None:
+    def _parse_one(v) -> date | datetime | None:
         if isinstance(v, datetime):
-            return v.date()
+            return v
         if isinstance(v, date):
             return v
         text = str(v).strip()
@@ -144,11 +144,24 @@ def parse_vn_date_column(values: list) -> tuple[list, str]:
     if ok_ratio < _RAW_RATIO_THRESHOLD:
         return list(values), "raw"
 
+    # 1 giá trị có giờ/phút/giây thật (khác 00:00:00) đủ để nâng CẢ CỘT lên "datetime" -- giữ
+    # đồng nhất 1 kiểu dữ liệu cho cả cột thay vì lẫn date/datetime từng dòng.
+    has_time = any(
+        isinstance(p, datetime) and (p.hour or p.minute or p.second) for p in parsed if p is not None
+    )
+
     result = []
     for v in values:
         if v is None or str(v).strip() == "":
             result.append(None)
+            continue
+        parsed_v = _parse_one(v)
+        if parsed_v is None:
+            result.append(None)
+        elif has_time:
+            result.append(
+                parsed_v if isinstance(parsed_v, datetime) else datetime(parsed_v.year, parsed_v.month, parsed_v.day)
+            )
         else:
-            parsed_v = _parse_one(v)
-            result.append(parsed_v.isoformat() if parsed_v else None)
-    return result, "date"
+            result.append(parsed_v.date() if isinstance(parsed_v, datetime) else parsed_v)
+    return result, "datetime" if has_time else "date"

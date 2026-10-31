@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from data_loader.value_cleaner import (
     clean_numeric_column,
     parse_vn_date_column,
@@ -81,10 +83,38 @@ def test_split_quantity_unit_returns_none_when_pattern_is_rare():
     assert split_quantity_unit(values) is None
 
 
-def test_parse_vn_date_column_converts_to_iso():
+def test_parse_vn_date_column_returns_real_date_objects_not_iso_strings():
     values = ["01/04/2025", "31/05/2025", None]
 
     cleaned, dtype = parse_vn_date_column(values)
 
     assert dtype == "date"
-    assert cleaned == ["2025-04-01", "2025-05-31", None]
+    assert cleaned == [date(2025, 4, 1), date(2025, 5, 31), None]
+
+
+def test_parse_vn_date_column_keeps_real_time_of_day_from_datetime_objects():
+    # Dữ liệu thật train/data/biz_105/SoBanHang_1.xlsx, sheet "Thang 02 2025": openpyxl tự parse
+    # cell Excel có giờ thành datetime.datetime object thật (không phải text) -- bug gốc là
+    # _parse_one gọi .date() bỏ mất giờ của CHÍNH object này, không phải thiếu format text.
+    values = [
+        datetime(2025, 2, 1, 6, 0, 25),
+        datetime(2025, 2, 1, 6, 46, 58),
+        None,
+    ]
+
+    cleaned, dtype = parse_vn_date_column(values)
+
+    assert dtype == "datetime"
+    assert cleaned == [datetime(2025, 2, 1, 6, 0, 25), datetime(2025, 2, 1, 6, 46, 58), None]
+
+
+def test_parse_vn_date_column_upgrades_whole_column_to_datetime_when_any_value_has_time():
+    # 1 giá trị có giờ thật đủ để NÂNG CẢ CỘT thành "datetime" -- các giá trị chỉ có ngày (00:00:00)
+    # trong CÙNG cột phải lên datetime lúc nửa đêm để cột đồng nhất 1 kiểu (DuckDB infer TIMESTAMP
+    # cho cả cột, không lẫn DATE/TIMESTAMP giữa các dòng).
+    values = [datetime(2025, 2, 1, 0, 0, 0), datetime(2025, 2, 1, 6, 0, 25)]
+
+    cleaned, dtype = parse_vn_date_column(values)
+
+    assert dtype == "datetime"
+    assert cleaned == [datetime(2025, 2, 1, 0, 0, 0), datetime(2025, 2, 1, 6, 0, 25)]
