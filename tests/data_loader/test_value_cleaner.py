@@ -79,6 +79,27 @@ def test_clean_numeric_column_still_converts_plain_quantities_with_a_single_zero
     assert cleaned == [0.0, 150.0, 42.0]
 
 
+def test_clean_numeric_column_one_stray_leading_zero_string_does_not_drag_int_column_to_raw():
+    # 9 số nguyên thật + 1 chuỗi "007" lệch: tỉ lệ leading-zero tính trên TOÀN BỘ non-null (1/10),
+    # không chỉ phần text (1/1) -> cột vẫn numeric.
+    values = [100, 200, 300, 400, 500, 600, 700, 800, 900, "007"]
+
+    cleaned, dtype = clean_numeric_column(values)
+
+    assert dtype == "numeric"
+    assert cleaned == [100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 7.0]
+
+
+def test_clean_numeric_column_keeps_decimal_fraction_strings_as_numeric():
+    # "0.5", "0.25" bắt đầu bằng "0" nhưng là số thập phân (có dấu chấm) -> KHÔNG phải mã định danh.
+    values = ["0.5", "0.25", "0.75"]
+
+    cleaned, dtype = clean_numeric_column(values)
+
+    assert dtype == "numeric"
+    assert cleaned == [0.5, 0.25, 0.75]
+
+
 def test_clean_numeric_column_falls_back_to_raw_when_mostly_non_numeric():
     values = ["Đã hoàn thành", "Đã huỷ", "Đang giao"]
 

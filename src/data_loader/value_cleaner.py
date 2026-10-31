@@ -27,14 +27,18 @@ def _to_number(value) -> float | None:
 
 
 def _looks_like_leading_zero_code(non_null: list) -> bool:
-    """SĐT/MST VN quy ước giữ số 0 đầu (vd "0933201672") -- không ai viết số lượng/tiền có số 0
-    đệm đầu, nên tỉ lệ cao giá trị dạng text bắt đầu bằng "0" (độ dài > 1) là tín hiệu đủ mạnh để
-    coi cả cột là mã định danh, không ép numeric."""
+    """SĐT/MST VN quy ước giữ số 0 đầu (vd "0933201672") -- không ai viết số lượng/tiền (số
+    nguyên hoặc thập phân) có số 0 đệm đầu, nên tỉ lệ cao giá trị dạng text bắt đầu bằng "0"
+    (độ dài > 1, không phải số thập phân) là tín hiệu đủ mạnh để coi cả cột là mã định danh,
+    không ép numeric. Tính tỉ lệ trên TOÀN BỘ non_null (không chỉ phần text), để 1 giá trị lệch
+    hiếm trong 1 cột số nguyên-type thật không kéo cả cột về "raw"."""
     texts = [str(v).strip() for v in non_null if not isinstance(v, (int, float))]
     if not texts:
         return False
-    zero_prefixed = sum(1 for t in texts if t.startswith("0") and len(t) > 1)
-    return zero_prefixed / len(texts) >= _RAW_RATIO_THRESHOLD
+    zero_prefixed = sum(
+        1 for t in texts if t.startswith("0") and len(t) > 1 and "." not in t and "," not in t
+    )
+    return zero_prefixed / len(non_null) >= _RAW_RATIO_THRESHOLD
 
 
 def clean_numeric_column(values: list) -> tuple[list, str]:
