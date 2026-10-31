@@ -16,6 +16,13 @@ def _normalize(cell) -> str:
     return str(cell).strip().lower() if cell is not None else ""
 
 
+def _looks_like_caption(non_empty_cells: list) -> bool:
+    if len(non_empty_cells) != 1:
+        return False
+    text = str(non_empty_cells[0]).strip()
+    return text.isupper() or ":" in text
+
+
 def locate_header(
     rows: list[tuple], expected_columns: list[str] | None, max_scan_rows: int = 15
 ) -> HeaderMatch:
@@ -33,10 +40,20 @@ def locate_header(
         if best_score >= _MATCH_THRESHOLD:
             return HeaderMatch(header_row_index=best_index, confidence="high")
 
-    # Fallback: dòng đầu tiên mà mọi cell không rỗng đều là chuỗi (không phải số/None)
+    # Fallback: dòng đầu tiên mà mọi cell không rỗng đều là chuỗi, ƯU TIÊN bỏ qua dòng giống
+    # caption báo cáo (1 cell, dạng "TIÊU ĐỀ HOA" hoặc "Nhãn: giá trị") -- caption như vậy phổ
+    # biến ở đầu file xlsx thật (vd biz_118/"Bảng kê phiếu giao hàng.xlsx") và dễ bị nhận lầm là
+    # header khi sheet chỉ có 1-vài cell có dữ liệu ở các dòng caption đó. Nếu MỌI dòng ứng viên
+    # đều giống caption (pathological), rơi về dòng ứng viên ĐẦU TIÊN để giữ an toàn như trước.
+    candidates: list[int] = []
     for i, row in enumerate(rows[:max_scan_rows]):
         non_empty = [c for c in row if c is not None and str(c).strip() != ""]
         if non_empty and all(isinstance(c, str) for c in non_empty):
-            return HeaderMatch(header_row_index=i, confidence="low")
+            candidates.append(i)
+            if not _looks_like_caption(non_empty):
+                return HeaderMatch(header_row_index=i, confidence="low")
+
+    if candidates:
+        return HeaderMatch(header_row_index=candidates[0], confidence="low")
 
     return HeaderMatch(header_row_index=0, confidence="low")
