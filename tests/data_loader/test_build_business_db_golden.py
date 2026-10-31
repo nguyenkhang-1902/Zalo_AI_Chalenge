@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from data_loader.build_business_db import build_business
 
@@ -141,3 +142,28 @@ def test_one_broken_file_does_not_crash_other_tables(tmp_path: Path):
     table_names = [t["table_name"] for t in summary["tables"]]
     assert "good" in table_names
     assert "bad" not in table_names  # bị bỏ qua, không làm hỏng cả business
+
+
+_PROSE_README_BUSINESSES = [
+    ("train", "biz_106"),
+    ("train", "biz_109"),
+    ("train", "biz_123"),
+    ("train", "biz_124"),
+    ("public_test", "dev_003"),
+    ("public_test", "dev_006"),
+    ("public_test", "dev_014"),
+]
+
+
+@pytest.mark.parametrize("dataset, business_id", _PROSE_README_BUSINESSES)
+def test_prose_readme_businesses_still_produce_valid_tables(tmp_path: Path, dataset, business_id):
+    """Finding #4: 7 business README dạng văn xuôi (không liệt kê cột) -- sau fix Finding #3
+    (header-locator bỏ caption), vẫn phải ra >=1 table hợp lệ, không crash."""
+    business_dir = PROJECT_ROOT / dataset / "data" / business_id
+    assert business_dir.exists(), f"Cần có dữ liệu thật {dataset}/data/{business_id}"
+
+    summary = build_business(business_dir, tmp_path / business_id)
+
+    assert len(summary["tables"]) > 0, f"{business_id}: phải ra >=1 table hợp lệ"
+    for table in summary["tables"]:
+        assert table["header_confidence"] in ("high", "low")
