@@ -101,4 +101,24 @@ def test_clean_sheet_to_table_pads_short_rows_without_pandas_warning(tmp_path: P
         summary = build_business(business_dir, tmp_path / "out")
 
     table = next(t for t in summary["tables"] if t["table_name"] == "a")
-    assert table["columns"][2]["n_rows"] == 2  # cả 2 dòng đều có mặt, dòng ngắn được pad None ở "C"
+    col_c = table["columns"][2]
+    assert col_c["n_rows"] == 2  # cả 2 dòng đều có mặt, dòng ngắn được pad None ở "C"
+    assert col_c["n_null"] == 1  # giá trị pad thực sự là None/NaN, không phải sentinel khác
+    assert col_c["sample_values"] == [5.0]  # chỉ dòng dài (3,4,5) có giá trị "C", dòng ngắn là null
+
+
+def test_clean_sheet_to_table_truncates_long_rows_without_pandas_warning(tmp_path: Path):
+    """Finding #8: dòng dài hơn header (thừa cell) phải bị cắt về đúng độ dài header TRƯỚC khi
+    dựng DataFrame -- không để pandas tự xử lý/raise, không lệch cột."""
+    business_dir = tmp_path / "biz"
+    business_dir.mkdir()
+    (business_dir / "a.csv").write_text("A,B\n1,2,3\n4,5\n", encoding="utf-8")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        summary = build_business(business_dir, tmp_path / "out")
+
+    table = next(t for t in summary["tables"] if t["table_name"] == "a")
+    assert table["columns"][0]["n_rows"] == 2
+    col_a = next(c for c in table["columns"] if c["name"] == "A")
+    assert col_a["sample_values"] == [1, 4]  # dòng "1,2,3" bị cắt về đúng 2 cột, giữ "A"=1, "B"=2, bỏ "3"
