@@ -15,7 +15,7 @@ from data_loader.duckdb_writer import write_tables
 from data_loader.header_locator import locate_header
 from data_loader.models import LoadedTable
 from data_loader.readme_parser import ReadmeInfo, columns_for, parse_readme
-from data_loader.schema_grouping import _is_period_series, group_same_schema_files
+from data_loader.schema_grouping import _is_period_series, _is_period_sheet_name, group_same_schema_files
 from data_loader.schema_summary import summarize_business
 from data_loader.sheet_reader import RawSheet, read_all_sheets
 from data_loader.value_cleaner import (
@@ -142,6 +142,7 @@ def _group_raw_period_series(
     Trong mỗi bucket, còn phải xác nhận tên file đúng là 1 chuỗi theo kỳ (dùng lại guard
     `_is_period_series` của schema_grouping) mới coi là 1 group; nếu không, trả về singles.
     """
+    _PERIOD_SHEET_MARKER = "__PERIOD_SHEET__"
     buckets: dict[tuple, list[RawSheet]] = defaultdict(list)
     singles: list[RawSheet] = []
 
@@ -150,12 +151,22 @@ def _group_raw_period_series(
         if expected is None:
             singles.append(rs)
             continue
-        buckets[(rs.sheet_name, tuple(expected))].append(rs)
+        # Nhiều sheet tên theo kỳ khác nhau (vd "T01_2025" và "T02_2025") trong CÙNG 1 bucket,
+        # để gộp được -- nếu dùng đúng sheet_name làm key như cũ, mỗi tên kỳ sẽ ra 1 bucket riêng.
+        bucket_sheet_key = _PERIOD_SHEET_MARKER if _is_period_sheet_name(rs.sheet_name) else rs.sheet_name
+        buckets[(bucket_sheet_key, tuple(expected))].append(rs)
 
     groups: list[list[RawSheet]] = []
-    for bucket in buckets.values():
+    for (bucket_sheet_key, _expected_key), bucket in buckets.items():
         if len(bucket) < 2:
             singles.extend(bucket)
+            continue
+        if bucket_sheet_key == _PERIOD_SHEET_MARKER:
+            # Mọi sheet trong bucket này đã vào đây CHÍNH VÌ sheet_name khớp pattern kỳ -- không
+            # cần soi lại hậu tố tên FILE như nhánh dưới (period ở đây là theo SHEET, có thể nhiều
+            # sheet trong CÙNG 1 file như biz_102, hoặc cùng tên sheet rải ở nhiều file như
+            # biz_105/dev_013 khi README khai cùng 1 list cột cho cả 2 file).
+            groups.append(bucket)
             continue
         stems = [os.path.splitext(rs.source_file)[0] for rs in bucket]
         prefix = os.path.commonprefix(stems)

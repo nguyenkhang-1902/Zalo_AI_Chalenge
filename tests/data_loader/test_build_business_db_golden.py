@@ -38,6 +38,47 @@ def test_merges_monthly_files_for_dev_005(tmp_path: Path):
     assert len(merged["source_files"]) == 17
 
 
+def test_merges_period_sheets_within_a_single_file_for_biz_102(tmp_path: Path):
+    """Finding #5: biz_102/DonHang_ChiTiet.xlsx chia 18 sheet theo tháng (T01_2025..T06_2026)
+    trong CÙNG 1 file -- phải gộp thành 1 table, không ra 18 table rời rạc."""
+    business_dir = PROJECT_ROOT / "train" / "data" / "biz_102"
+    assert business_dir.exists(), "Cần có dữ liệu thật train/data/biz_102"
+
+    summary = build_business(business_dir, tmp_path)
+
+    don_hang_tables = [t for t in summary["tables"] if t["table_name"].startswith("DonHang_ChiTiet")]
+    assert len(don_hang_tables) == 1, f"Phải gộp thành 1 table, hiện ra: {don_hang_tables}"
+    assert len(don_hang_tables[0]["source_files"]) == 18
+
+
+def test_merges_period_sheets_across_two_files_for_biz_105(tmp_path: Path):
+    """Finding #5(b): biz_105 có 2 file (SoBanHang_1.xlsx 12 sheet + SoBanHang_2026.xlsx 5 sheet)
+    cùng khai cột giống nhau trong README -- phải gộp XUYÊN FILE thành 1 table duy nhất."""
+    business_dir = PROJECT_ROOT / "train" / "data" / "biz_105"
+    assert business_dir.exists(), "Cần có dữ liệu thật train/data/biz_105"
+
+    summary = build_business(business_dir, tmp_path)
+
+    so_ban_hang_tables = [t for t in summary["tables"] if t["table_name"].startswith("SoBanHang")]
+    assert len(so_ban_hang_tables) == 1, f"Phải gộp thành 1 table, hiện ra: {so_ban_hang_tables}"
+    assert len(so_ban_hang_tables[0]["source_files"]) == 17  # 12 sheet file 1 + 5 sheet file 2
+
+
+def test_merges_period_sheets_for_dev_014_without_readme_and_excludes_stray_sheet(tmp_path: Path):
+    """Finding #5(c): dev_014 (1 trong 7 business README văn xuôi, không có cột khai báo) --
+    phải gộp ở tầng post-clean (không cần README), và sheet "Ghi tắt" không khớp pattern kỳ phải
+    đứng riêng, không bị kéo vào nhóm gộp."""
+    business_dir = PROJECT_ROOT / "public_test" / "data" / "dev_014"
+    assert business_dir.exists(), "Cần có dữ liệu thật public_test/data/dev_014"
+
+    summary = build_business(business_dir, tmp_path)
+
+    so_ban_hang_tables = [
+        t for t in summary["tables"] if t["table_name"].startswith("SoBanHang") and len(t["source_files"]) > 1
+    ]
+    assert len(so_ban_hang_tables) == 1, f"Phải có đúng 1 table gộp theo kỳ, hiện ra: {summary['tables']}"
+
+
 def test_rerun_is_idempotent(tmp_path: Path):
     business_dir = PROJECT_ROOT / "train" / "data" / "biz_105"
 
