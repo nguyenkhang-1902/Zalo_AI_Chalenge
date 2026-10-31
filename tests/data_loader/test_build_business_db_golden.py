@@ -64,8 +64,11 @@ def test_one_broken_file_does_not_crash_other_tables(tmp_path: Path):
     business_dir = tmp_path / "biz_broken"
     business_dir.mkdir()
     (business_dir / "good.csv").write_text("A,B\n1,2\n3,4\n", encoding="utf-8")
-    # "bad.csv" có dòng số cột không khớp header -> ép pandas raise lỗi khi dựng DataFrame
-    (business_dir / "bad.csv").write_text("A,B\n1,2,3\n4,5\n", encoding="utf-8")
+    # "bad.csv" chứa byte không phải UTF-8 hợp lệ (0xFF không bao giờ hợp lệ trong UTF-8) -> lỗi
+    # ngay khi đọc, bị read_all_sheets bỏ qua tại tầng đọc file (độc lập với fix Finding #8 ở
+    # tầng dựng DataFrame -- không còn dùng lệch-số-cột để giả lập file hỏng nữa, vì sau fix đó
+    # không còn làm file hỏng theo cách đó).
+    (business_dir / "bad.csv").write_bytes(b"A,B\n\xff\xfe,2\n")
 
     summary = build_business(business_dir, tmp_path / "out")
 

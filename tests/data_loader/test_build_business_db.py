@@ -1,4 +1,5 @@
 import json
+import warnings
 from datetime import datetime, time
 from pathlib import Path
 
@@ -86,3 +87,18 @@ def test_build_header_avoids_colliding_with_an_existing_original_name():
 
     assert header == ["Ten", "Ten_2", "Ten_2_2"]
     assert len({h.casefold() for h in header}) == 3
+
+
+def test_clean_sheet_to_table_pads_short_rows_without_pandas_warning(tmp_path: Path):
+    """Finding #8: dòng ngắn hơn header (xlsx có dòng bị cắt cell rỗng ở cuối) không được để pandas
+    tự pad NaN lúc dựng DataFrame -- Pandas4Warning, dự kiến raise lỗi ở bản sau."""
+    business_dir = tmp_path / "biz"
+    business_dir.mkdir()
+    (business_dir / "a.csv").write_text("A,B,C\n1,2\n3,4,5\n", encoding="utf-8")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        summary = build_business(business_dir, tmp_path / "out")
+
+    table = next(t for t in summary["tables"] if t["table_name"] == "a")
+    assert table["columns"][2]["n_rows"] == 2  # cả 2 dòng đều có mặt, dòng ngắn được pad None ở "C"

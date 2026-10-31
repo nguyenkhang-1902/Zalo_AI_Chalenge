@@ -89,6 +89,20 @@ def _apply_value_cleaning(frame: pd.DataFrame) -> dict[str, str]:
     return column_dtypes
 
 
+def _align_row_length(rows: list[tuple], length: int) -> list[tuple]:
+    """Chuẩn hoá mọi row về đúng len(header) TRƯỚC khi dựng DataFrame -- nếu không, pandas tự pad
+    NaN cho row ngắn hơn (Pandas4Warning, dự kiến raise lỗi ở bản sau) và có thể lỗi âm thầm cho
+    row dài hơn."""
+    aligned = []
+    for row in rows:
+        if len(row) < length:
+            row = row + (None,) * (length - len(row))
+        elif len(row) > length:
+            row = row[:length]
+        aligned.append(row)
+    return aligned
+
+
 def _clean_sheet_to_table(raw_sheet: RawSheet, expected_columns: list[str] | None) -> LoadedTable | None:
     match = locate_header(raw_sheet.rows, expected_columns)
     header_row = raw_sheet.rows[match.header_row_index]
@@ -97,6 +111,7 @@ def _clean_sheet_to_table(raw_sheet: RawSheet, expected_columns: list[str] | Non
         return None
 
     header = _build_header(header_row)
+    data_rows = _align_row_length(data_rows, len(header))
     frame = pd.DataFrame(data_rows, columns=header)
     column_dtypes = _apply_value_cleaning(frame)
 
@@ -178,6 +193,7 @@ def _clean_raw_group_to_table(group: list[RawSheet], readme: ReadmeInfo | None) 
     if not all_data_rows:
         return None
 
+    all_data_rows = _align_row_length(all_data_rows, len(header))
     frame = pd.DataFrame(all_data_rows, columns=header)
     column_dtypes = _apply_value_cleaning(frame)
 
