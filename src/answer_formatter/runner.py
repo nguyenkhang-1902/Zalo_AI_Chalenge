@@ -23,6 +23,7 @@ class BatchSummary:
     processed: int
     errored: int
     elapsed_seconds: float
+    abstained: int = 0
 
 
 def _load_jsonl(path: Path) -> list[dict]:
@@ -58,7 +59,7 @@ def _validate_contract(result: object) -> None:
         raise ValueError(f"answer_fn phải trả dict, nhận {type(result).__name__}")
     if "type" not in result:
         raise ValueError("answer_fn thiếu key 'type'")
-    if result["type"] != "unanswerable" and "answer" not in result:
+    if result["type"] not in ("unanswerable", "abstain") and "answer" not in result:
         raise ValueError("answer_fn thiếu key 'answer' (type khác unanswerable)")
 
 
@@ -100,22 +101,23 @@ def run_batch(
         remaining = remaining[:limit]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    errored = 0
     write_lock = threading.Lock()
 
     with out_path.open("a", encoding="utf-8") as out_file:
-        def _process_and_write(q: dict) -> bool:
+        def _process_and_write(q: dict) -> str:
             result, is_error = _answer_one(q, dataset_dir, answer_fn)
+            if result.get("type") == "abstain":
+                return "abstain"
             line = json.dumps({**result, "id": q["id"]}, ensure_ascii=False) + "\n"
             with write_lock:
                 out_file.write(line)
                 out_file.flush()
-            return is_error
+            return "error" if is_error else "ok"
 
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            for is_error in pool.map(_process_and_write, remaining):
-                if is_error:
-                    errored += 1
+            statuses = list(pool.map(_process_and_write, remaining))
+        errored = statuses.count("error")
+        abstained = statuses.count("abstain")
 
     return BatchSummary(
         total=len(questions),
@@ -123,4 +125,5 @@ def run_batch(
         processed=len(remaining),
         errored=errored,
         elapsed_seconds=time.monotonic() - start,
+        abstained=abstained,
     )
