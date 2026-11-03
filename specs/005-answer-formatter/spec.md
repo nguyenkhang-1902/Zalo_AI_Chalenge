@@ -65,7 +65,9 @@ không lỗi format, có điểm số (dù thấp) — không cần `006-docker-
 
 - **FR-001**: Hệ thống MUST cung cấp `run_batch(questions_path: Path, dataset_dir: Path,
   out_path: Path, concurrency: int = 1, limit: int | None = None, answer_fn: Callable[[str, str,
-  date], dict] = answer_question) -> BatchSummary`.
+  date, Path], dict] = answer_question) -> BatchSummary` — `answer_fn` MUST nhận đúng 4 tham số
+  (`question, business_id, as_of_date, dataset_dir`) khớp chữ ký thật của `answer_question` (004),
+  và `run_batch` MUST truyền `dataset_dir` của chính nó vào mỗi lời gọi `answer_fn`.
 - **FR-002**: `run_batch` MUST đọc `questions_path` (JSONL, mỗi dòng `{"id", "business_id",
   "question", "as_of_date"}`), parse `as_of_date` bằng `date.fromisoformat`.
 - **FR-003**: Nếu `out_path` đã tồn tại, `run_batch` MUST đọc trước (khoan dung — bỏ dòng rỗng,
