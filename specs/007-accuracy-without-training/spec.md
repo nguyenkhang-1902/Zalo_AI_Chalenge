@@ -38,7 +38,10 @@ thấp. Là nền để mọi cải tiến sau đo được trên cùng thang đ
 2. **Given** các lần chạy đồng thuận ≥ ngưỡng, **Then** trả đáp án đồng thuận.
 3. **Given** kết quả SQL rỗng/NULL/âm bất hợp lý cho kiểu câu hỏi số tiền, **When** agent chuẩn bị
    trả đáp án, **Then** coi là tín hiệu tin cậy thấp (hạ điểm tin cậy), không tự đổi sang
-   `unanswerable` (FR-006 của 004 vẫn do model quyết).
+   `unanswerable` (FR-006 của 004 vẫn do model quyết). *(Plan 007 HOÃN scenario này — YAGNI: chỉ
+   làm nếu số đo cho thấy độ đồng thuận một mình chưa đủ; `react_loop` hiện không lộ lịch sử tool.)*
+5. **Given** một lần chạy kết thúc bằng guard "hết ngân sách" của 004 (FR-005), **Then** cổng coi
+   đó là phiếu abstain, không phải phiếu `unanswerable` (trả `unanswerable` sai tốn −1).
 4. **Given** ngưỡng tin cậy, **Then** ngưỡng là hằng số trong `config.py`/env (Điều 4), chọn bằng
    đường cong PA theo ngưỡng trên bộ dev, KHÔNG chọn bằng `public_test`.
 
