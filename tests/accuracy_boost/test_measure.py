@@ -79,3 +79,27 @@ def test_errored_run_is_retried_and_later_row_wins(tmp_path):
     assert load_runs(out)["q1"][0]["type"] == "abstain"
     assert collect_runs(DEV[:1], Path("."), out, **kwargs) == 1
     assert load_runs(out)["q1"] == [{"type": "number", "answer": 42}]
+
+
+def test_collect_cli_excludes_dev_questions_from_fewshot(tmp_path, monkeypatch):
+    from accuracy_boost import measure
+
+    captured = {}
+
+    def fake_collect(devset, dataset_dir, out_path, **kwargs):
+        captured["extra"] = kwargs["base_options"].prompt_extra_fn(devset[0]["question"])
+        return 0
+
+    train = tmp_path / "train"
+    train.mkdir()
+    (train / "rulebook.md").write_text("r", encoding="utf-8")
+    (train / "calendar.csv").write_text("c", encoding="utf-8")
+    questions = [{"id": f"q{i}", "business_id": "b", "question": f"doanh thu thang {i}", "as_of_date": "2026-01-01"} for i in range(6)]
+    (train / "questions.jsonl").write_text("".join(json.dumps(q) + "\n" for q in questions), encoding="utf-8")
+    (train / "answers.jsonl").write_text("".join(json.dumps({"id": q["id"], "type": "number", "answer": 1, "alias": []}) + "\n" for q in questions), encoding="utf-8")
+
+    monkeypatch.setattr(measure, "collect_runs", fake_collect)
+    monkeypatch.setattr(measure, "prepare_dataset_dir", lambda *a, **k: None)
+    measure.main(["collect", "--train-dir", str(train), "--dataset-dir", str(tmp_path / "d"),
+                  "--out", str(tmp_path / "o.jsonl"), "--size", "6", "--fewshot-k", "3"])
+    assert captured["extra"] == ""

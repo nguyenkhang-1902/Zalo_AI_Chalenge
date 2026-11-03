@@ -18,6 +18,7 @@ from typing import Callable
 from accuracy_boost.config import load_boost_config
 from accuracy_boost.consensus import pa_curve
 from accuracy_boost.devset import build_devset, take_subset
+from accuracy_boost.fewshot import FewShotPool
 from accuracy_boost.gated import options_for_run
 from data_loader.build_business_db import build_business
 from reasoning_agent import answer_question
@@ -124,26 +125,32 @@ def format_curve(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _build_options(args) -> AgentOptions:
-    return AgentOptions(seed=load_boost_config().base_seed, semantic_tools=args.semantic_tools)
+def _build_options(args, train_dir: Path, exclude_questions: frozenset[str]) -> AgentOptions:
+    prompt_extra_fn = None
+    if args.fewshot_k > 0:
+        pool = FewShotPool.from_train_dir(train_dir)
+        prompt_extra_fn = lambda question: pool.format_prompt(question, args.fewshot_k, exclude_questions)
+    return AgentOptions(
+        seed=load_boost_config().base_seed, semantic_tools=args.semantic_tools, prompt_extra_fn=prompt_extra_fn
+    )
 
 
 def _cmd_collect(args) -> int:
     train_dir = Path(args.train_dir)
     questions = _load_jsonl(train_dir / "questions.jsonl")
     answers_by_id = {a["id"]: a for a in _load_jsonl(train_dir / "answers.jsonl")}
-    devset = build_devset(questions, answers_by_id, size=args.size)
-    if args.limit:
-        devset = take_subset(devset, args.limit)
+    full_dev = build_devset(questions, answers_by_id, size=args.size)
+    devset = take_subset(full_dev, args.limit) if args.limit else full_dev
     prepare_dataset_dir(train_dir, sorted({q["business_id"] for q in devset}), Path(args.dataset_dir))
     cfg = load_boost_config()
+    exclude = frozenset(q["question"] for q in full_dev)
     written = collect_runs(
         devset,
         Path(args.dataset_dir),
         Path(args.out),
         n_runs=args.n_runs or cfg.n_runs,
         sample_temperature=cfg.sample_temperature,
-        base_options=_build_options(args),
+        base_options=_build_options(args, train_dir, exclude),
     )
     print(f"đã ghi {written} lượt chạy vào {args.out}")
     return 0
@@ -175,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     collect.add_argument("--limit", type=int, default=0)
     collect.add_argument("--n-runs", type=int, default=0)
     collect.add_argument("--semantic-tools", action="store_true")
+    collect.add_argument("--fewshot-k", type=int, default=0)
     collect.set_defaults(func=_cmd_collect)
 
     report = sub.add_parser("report")
