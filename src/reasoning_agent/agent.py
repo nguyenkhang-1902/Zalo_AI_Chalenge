@@ -14,6 +14,7 @@ from reasoning_agent.options import AgentOptions
 from reasoning_agent.prompt import build_system_prompt
 from reasoning_agent.react_loop import run_react_loop
 from reasoning_agent.schema_tools import build_schema_tools, load_schema
+from reasoning_agent.semantic_tools import SEMANTIC_TOOL_GUIDE, build_semantic_tools
 from reasoning_agent.sql_tool import build_sql_tool
 
 
@@ -38,6 +39,8 @@ def answer_question(
     config = load_config()
     options = options or AgentOptions()
     extra = options.prompt_extra_fn(question) if options.prompt_extra_fn else ""
+    if options.semantic_tools:
+        extra = (extra + "\n\n" + SEMANTIC_TOOL_GUIDE).strip()
     system_prompt = build_system_prompt(schema, rulebook_text, extra)
 
     db_path = dataset_dir / f"{business_id}.duckdb"
@@ -48,6 +51,8 @@ def answer_question(
             **build_schema_tools(schema),
             "run_sql": build_sql_tool(conn),
         }
+        if options.semantic_tools:
+            registry.update(build_semantic_tools(schema, conn))
 
         def chat_fn(messages: list[dict], tools: list[dict], timeout: float) -> dict:
             return call_chat_completion(

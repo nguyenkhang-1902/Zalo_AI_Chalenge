@@ -43,3 +43,22 @@ def test_default_options_keep_004_behavior(tmp_path, monkeypatch):
 
     assert _submit.seen["sampling"] == {"temperature": 0.0, "seed": 42}
     assert "EXTRA-FOR" not in _submit.seen["messages"][0]["content"]
+
+
+def test_semantic_tools_registered_only_when_enabled(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    seen = {}
+
+    def chat(config, messages, tools, timeout, **sampling):
+        seen["tools"] = {t["function"]["name"] for t in tools}
+        seen["system"] = messages[0]["content"]
+        return _submit(config, messages, tools, timeout, **sampling)
+
+    monkeypatch.setattr("reasoning_agent.agent.call_chat_completion", chat)
+
+    answer_question("q?", "biz_102", date(2026, 3, 29), tmp_path)
+    assert "aggregate" not in seen["tools"]
+
+    answer_question("q?", "biz_102", date(2026, 3, 29), tmp_path, options=AgentOptions(semantic_tools=True))
+    assert {"aggregate", "percent_change"} <= seen["tools"]
+    assert "Tool tổng hợp có sẵn" in seen["system"]
