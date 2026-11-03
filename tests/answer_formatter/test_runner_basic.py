@@ -216,3 +216,20 @@ def test_creates_missing_parent_directory_for_out_path(tmp_path: Path):
 
     assert out_path.exists()
     assert len(_read_jsonl(out_path)) == 1
+
+
+def test_malformed_as_of_date_written_as_unanswerable_and_batch_continues(tmp_path: Path):
+    questions_path = tmp_path / "questions.jsonl"
+    _write_jsonl(questions_path, [
+        {"id": "q1", "business_id": "biz_1", "question": "a", "as_of_date": "khong-phai-ngay"},
+        {"id": "q2", "business_id": "biz_2", "question": "b", "as_of_date": "2026-01-01"},
+    ])
+    out_path = tmp_path / "submission.jsonl"
+
+    summary = run_batch(questions_path, tmp_path, out_path, answer_fn=_fake_answer_fn)
+
+    rows = {r["id"]: r for r in _read_jsonl(out_path)}
+    assert rows["q1"]["type"] == "unanswerable"
+    assert rows["q2"]["type"] == "string"
+    assert summary.errored == 1
+    assert summary.processed == 2

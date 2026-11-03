@@ -63,8 +63,8 @@ def _validate_contract(result: object) -> None:
 
 
 def _answer_one(question: dict, dataset_dir: Path, answer_fn: AnswerFn) -> tuple[dict, bool]:
-    as_of = date.fromisoformat(question["as_of_date"])
     try:
+        as_of = date.fromisoformat(question["as_of_date"])
         result = answer_fn(question["question"], question["business_id"], as_of, dataset_dir)
         _validate_contract(result)
     except Exception as exc:  # noqa: BLE001 - 1 câu lỗi không được sập cả batch (FR-007)
