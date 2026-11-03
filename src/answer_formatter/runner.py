@@ -4,7 +4,9 @@ giữ nguyên chữ ký."""
 from __future__ import annotations
 
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -99,13 +101,21 @@ def run_batch(
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     errored = 0
+    write_lock = threading.Lock()
+
     with out_path.open("a", encoding="utf-8") as out_file:
-        for q in remaining:
+        def _process_and_write(q: dict) -> bool:
             result, is_error = _answer_one(q, dataset_dir, answer_fn)
-            if is_error:
-                errored += 1
-            out_file.write(json.dumps({"id": q["id"], **result}, ensure_ascii=False) + "\n")
-            out_file.flush()
+            line = json.dumps({"id": q["id"], **result}, ensure_ascii=False) + "\n"
+            with write_lock:
+                out_file.write(line)
+                out_file.flush()
+            return is_error
+
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            for is_error in pool.map(_process_and_write, remaining):
+                if is_error:
+                    errored += 1
 
     return BatchSummary(
         total=len(questions),
