@@ -1,6 +1,6 @@
 # ZALO AI CHALLENGE — DATAMATE — NHẬT KÝ TIẾN ĐỘ & HƯỚNG DẪN TIẾP TỤC
 
-> Cập nhật: **2026-10-31**. Mở file này đầu tiên là biết đang ở đâu và làm gì tiếp.
+> Cập nhật: **2026-11-03**. Mở file này đầu tiên là biết đang ở đâu và làm gì tiếp.
 > Mọi điểm chờ người quyết định đã gom về file [CHECKLIST-ZALO-DATAMATE-DUYET.md](CHECKLIST-ZALO-DATAMATE-DUYET.md).
 
 ## 📅 Deadline (ghi lại từ rule BTC)
@@ -229,3 +229,35 @@ commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
   Khang quyết riêng.
 - [x] ✅ `CHECKLIST-ZALO-DATAMATE-DUYET.md` mục C5 đã đóng (`[x] ✅`), kèm tóm tắt 1 dòng/finding
   + số liệu verify ở trên; Finding mới #9 giữ lại dưới dạng mục con ⚠️, không xoá.
+
+## 5. ĐỢT 2026-11-02→03 — Brainstorm + thực thi `004-reasoning-agent`
+
+- [x] ✅ Brainstorm (architectural path) + viết `specs/004-reasoning-agent/spec.md` (10 FR,
+  5 SC) — Khang duyệt, commit `0a9c419`. Kiến trúc chốt: ReAct tool-calling (KHÔNG code-exec
+  tự do) — 1 tool `run_sql` (DuckDB read-only) + 12 tool `date_resolver` (có guard `query_end`,
+  đóng C6) + `get_readme`/`get_table_detail` + tool nội bộ `submit_answer` kết thúc vòng lặp.
+- [x] ✅ `writing-plans` → `specs/004-reasoning-agent/reasoning-agent-plan.md` +
+  `reasoning-agent-tasks.md` (7 task, commit `f74853e`) — basename riêng, không đụng bug
+  workspace collision của 001-003.
+- [x] ✅ `subagent-driven-development` Task 1-6 (fresh implementer/task, review spec+quality
+  sau mỗi task) — **tất cả review clean, 0 Critical/Important**, 40/40 test pass:
+  - Task 1 `config.py`+`llm_client.py` (commit `6e98444`/`74e16f2`) — HTTP client OpenAI-compatible
+    qua `urllib` stdlib, không thêm dependency.
+  - Task 2 `date_tools.py`+`ToolSpec` (commit `64d5026`) — 12 tool date_resolver, guard `query_end`.
+  - Task 3 `schema_tools.py`+`prompt.py`+`conftest.py` (commit `36c3db6`).
+  - Task 4 `sql_tool.py` (commit `80ae084`) — implementer tự sửa 1 câu test sai trong brief gốc
+    (INSERT 1-value vào bảng 9-cột vỡ ở binder error trước khi chạm lỗi read-only), reviewer tự
+    verify độc lập xác nhận đúng.
+  - Task 5 `react_loop.py` (commit `e640895`) — vòng ReAct + ngân sách 6-step/45s + dispatch
+    wrapper; reviewer tự trace tay 4 test case dòng-by-dòng qua code thật, xác nhận đúng 100%.
+  - Task 6 `agent.py` (commit `e344a8c`) — `answer_question()` wiring toàn bộ; reviewer tự grep
+    độc lập xác nhận sạch `business_id==`/`question_id==` và không hard-code tên model.
+- [x] ✅ Task 7 (baseline thật) — chạy được, nhưng lộ ra giới hạn hạ tầng dev + model nhỏ, xem
+  chi tiết đầy đủ ở `CHECKLIST-ZALO-DATAMATE-DUYET.md` mục **C7** (không chép lại ở đây để tránh
+  2 nguồn sự thật — số liệu thật, root cause, 2 fix đã áp, kết quả cuối đều ở C7).
+  Tóm tắt 1 dòng: hạ tầng (num_ctx) + prompt (chống đoán tên cột) đã fix xong, hết crash/treo;
+  accuracy thật vẫn thấp (~10%, chủ yếu trùng ngẫu nhiên) do giới hạn model 7B + GPU 6GB —
+  Khang tạm chấp nhận (2026-11-03), chuyển sang `005-answer-formatter`/`006-docker-packaging`,
+  cần đo lại accuracy trước khi nộp Docker thật.
+- [ ] 🔜 Bắt đầu `005-answer-formatter` (chuẩn hoá format đáp án cuối theo rulebook §9 — FR-010
+  của `004` đã nói rõ: `answer_question()` không cần đúng format tuyệt đối, việc đó thuộc 005).

@@ -68,12 +68,41 @@
     bởi cả Task 1 và Task 3 → môi trường/máy bị áp lực CPU/RAM tích lũy, KHÔNG phải code
     regression của 8 fix C5. Cần đo lại SC-003 trên máy rảnh, Khang quyết giữ 120s hay nới ngân
     sách.
-- [ ] C6. **Contract từ final review của `002-date-calendar-resolver`** (bắt buộc đọc trước khi
-  brainstorm `004-reasoning-agent`): mọi hàm tính khoảng ngày của `002` trả về **CẢ kỳ** theo
-  định nghĩa `rulebook.md` §2 (vd hỏi "tháng này" khi tháng đang diễn ra → trả đủ đến hết tháng
-  dương lịch, KHÔNG tự cắt tại `as_of`). `004-reasoning-agent` khi dùng khoảng ngày này để lọc
-  **số liệu phát sinh thực tế** (doanh thu, đơn hàng...) PHẢI tự thêm điều kiện `<= as_of` —
-  002 không làm việc này. Không áp dụng cho các câu hỏi dạng "đến hết ngày X" (đã là kỳ cố định
-  trong quá khứ, không cần lọc thêm). Xem chi tiết:
-  `specs/002-date-calendar-resolver/spec.md` + docstring `src/date_resolver/__init__.py`.
-  ⏸️ Chưa làm — ghi nhận lúc thiết kế `004-reasoning-agent`.
+- [x] ✅ C6. **Contract từ final review của `002-date-calendar-resolver`**: mọi hàm tính khoảng
+  ngày của `002` trả về **CẢ kỳ** theo định nghĩa `rulebook.md` §2, `004-reasoning-agent` khi
+  dùng khoảng ngày này để lọc **số liệu phát sinh thực tế** phải tự thêm điều kiện `<= as_of`.
+  **Đã làm**: `004`'s `date_tools.py` tự thêm `query_end = min(end, as_of_date)` cho 11/12 tool
+  (ngoại lệ `shift_session`, không có khái niệm khoảng ngày) — xem FR-004 +
+  `specs/004-reasoning-agent/reasoning-agent-plan.md` mục "Đính chính lúc viết plan".
+
+- [ ] C7. **`004-reasoning-agent` Task 1-6 xong, review clean (40/40 test); Task 7 (baseline thật
+  100 câu) lộ ra máy dev hiện tại (RTX 3050 6GB) không đủ mạnh để đo accuracy thật đáng tin —
+  Khang đã tạm chấp nhận (2026-11-03), ghi lại để quyết dứt điểm trước khi nộp Docker thật.**
+  - Lần chạy đầu (commit `0aa0767`, model `qwen2.5:7b-instruct` ctx mặc định ~4096): 96/96 câu
+    hết ngân sách 45s/6-step → accuracy 12.5% (12/96, toàn bộ là trùng ngẫu nhiên với câu
+    ground-truth vốn đã "unanswerable" — accuracy thật trên 84 câu còn lại = 0%).
+  - Root cause xác nhận: context mặc định (~4096) quá nhỏ so với system prompt thật (6374 token
+    cho `biz_102` + 15 tool) → model/Ollama xử lý cực chậm (180s-300s+/lượt gọi, có lúc không
+    bao giờ xong). KHÔNG phải lỗi code Task 1-6, KHÔNG phải "zombie GPU job" (loại trừ bằng thực
+    nghiệm riêng) — đơn thuần context quá nhỏ cho prompt quá dài trên GPU 6GB.
+  - Fix hạ tầng (KHÔNG sửa code, chỉ operator-config, giữ đúng thiết kế model-agnostic
+    OpenAI-compatible): tạo model tag riêng `qwen2.5-7b-ctx12k` qua `ollama create` (Modelfile
+    thêm `PARAMETER num_ctx 12288`, dùng lại blob có sẵn, không tải thêm). Xác nhận: lượt gọi ấm
+    (warm) với prompt giống nhau chỉ mất **6.2s** (Ollama cache 6373/6374 token prompt).
+  - Fix prompt (commit `d8b2a2f`): model hay đoán sai/dịch sai tên cột SQL (`DateOfOrder` không
+    tồn tại, `Thành tiền` thay vì `Tổng tiền` thật) + thiếu dấu ngoặc kép cho tên cột nhiều từ —
+    sửa `prompt.py` hiển thị tên cột có sẵn dấu ngoặc kép + cảnh báo rõ + ví dụ SQL đúng.
+  - **Kết quả sau cả 2 fix** (test lại đúng 10 câu mẫu, seed=42, chấm qua `score_submission`
+    thật): accuracy vẫn **1/10 (10%)** — vẫn chỉ đúng câu "unanswerable" trùng ngẫu nhiên. NHƯNG
+    pipeline khỏe hơn rõ: 3/10 câu giờ hoàn thành trong ngân sách và ra đáp án số thật (trước đó
+    0/10) — vấn đề treo/hết ngân sách do đoán sai tên cột đã giảm đáng kể. Cả 3 câu hoàn thành
+    đều **sai giá trị** → lộ lớp vấn đề mới, sâu hơn: model 7B suy luận sai logic nghiệp vụ (sai
+    khoảng ngày, sai công thức tổng hợp, hoặc thiếu điều kiện lọc trạng thái theo rulebook) —
+    không còn là lỗi hạ tầng/tên cột, mà là giới hạn khả năng suy luận của model nhỏ trên GPU yếu.
+  - ⏸️ **Khang tạm chấp nhận hiện trạng (2026-11-03)**: coi `004` xong về code + hạ tầng (Task
+    1-6 logic đúng, unit test clean; Task 7 hạ tầng đã hết crash/treo), chuyển sang
+    `005-answer-formatter`/`006-docker-packaging`. **Cần quyết lại trước khi nộp Docker thật**:
+    đo lại accuracy với model mạnh hơn (14B, cần hạ tầng tốt hơn GPU 6GB hiện tại) hoặc tiếp tục
+    lặp prompt/kiến trúc — việc này KHÔNG phải sửa lỗi nhanh, là vòng đánh giá LLM mở.
+  - Chi tiết đầy đủ (log/trace từng lượt gọi, số liệu thật): ledger
+    `.superpowers/sdd/reasoning-agent-tasks/progress.md`.
