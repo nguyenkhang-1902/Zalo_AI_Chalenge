@@ -130,6 +130,15 @@ def test_concurrency_below_one_raises(tmp_path: Path):
         run_batch(questions_path, tmp_path, out_path, concurrency=0, answer_fn=_fake_answer_fn)
 
 
+def test_negative_limit_raises(tmp_path: Path):
+    questions_path = tmp_path / "questions.jsonl"
+    _write_jsonl(questions_path, [])
+    out_path = tmp_path / "submission.jsonl"
+
+    with pytest.raises(ValueError, match="limit"):
+        run_batch(questions_path, tmp_path, out_path, limit=-1, answer_fn=_fake_answer_fn)
+
+
 def test_exception_in_answer_fn_written_as_unanswerable_and_batch_continues(tmp_path: Path):
     questions_path = tmp_path / "questions.jsonl"
     _write_jsonl(questions_path, [

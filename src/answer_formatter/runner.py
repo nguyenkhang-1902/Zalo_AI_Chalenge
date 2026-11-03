@@ -1,6 +1,4 @@
-"""Batch runner (tuần tự) — FR-001/002/003/005/006/007/009/011/012, xem
-specs/005-answer-formatter/spec.md. Task 3 sẽ thay nội dung run_batch để thêm concurrency thật,
-giữ nguyên chữ ký."""
+"""Batch runner — FR-001..FR-012, xem specs/005-answer-formatter/spec.md."""
 from __future__ import annotations
 
 import json
@@ -84,6 +82,8 @@ def run_batch(
 ) -> BatchSummary:
     if concurrency < 1:
         raise ValueError(f"concurrency phải >= 1, nhận {concurrency}")
+    if limit is not None and limit < 0:
+        raise ValueError(f"limit phải >= 0 hoặc None, nhận {limit}")
 
     start = time.monotonic()
     questions = _load_jsonl(questions_path)
@@ -106,7 +106,7 @@ def run_batch(
     with out_path.open("a", encoding="utf-8") as out_file:
         def _process_and_write(q: dict) -> bool:
             result, is_error = _answer_one(q, dataset_dir, answer_fn)
-            line = json.dumps({"id": q["id"], **result}, ensure_ascii=False) + "\n"
+            line = json.dumps({**result, "id": q["id"]}, ensure_ascii=False) + "\n"
             with write_lock:
                 out_file.write(line)
                 out_file.flush()

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from answer_formatter import cli
 from answer_formatter.runner import BatchSummary
 
@@ -73,3 +75,23 @@ def test_all_public_symbols_importable_from_package_root():
 
     assert run_batch is not None
     assert BatchSummary is not None
+
+
+def test_cli_exits_nonzero_when_all_processed_questions_error(tmp_path, monkeypatch):
+    def fake_run_batch(questions_path, dataset_dir, out_path, concurrency=1, limit=None, **kwargs):
+        return BatchSummary(total=2, resumed_skipped=0, processed=2, errored=2, elapsed_seconds=0.1)
+
+    monkeypatch.setattr(cli, "run_batch", fake_run_batch)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "answer-formatter",
+            "--questions", str(tmp_path / "q.jsonl"),
+            "--dataset-dir", str(tmp_path),
+            "--out", str(tmp_path / "out.jsonl"),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main()
+    assert exc_info.value.code == 1

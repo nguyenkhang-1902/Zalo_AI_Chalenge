@@ -15,7 +15,14 @@ def main() -> None:
         description="Chạy answer_question theo lô, ghi submission.jsonl"
     )
     parser.add_argument("--questions", required=True)
-    parser.add_argument("--dataset-dir", required=True)
+    parser.add_argument(
+        "--dataset-dir",
+        required=True,
+        help=(
+            "Thư mục dữ liệu ĐÃ BUILD (output của data_loader.build_all --out <dir>) — "
+            "KHÔNG phải thư mục dữ liệu thô train/public_test gốc."
+        ),
+    )
     parser.add_argument("--out", required=True)
     parser.add_argument("--concurrency", type=int, default=1)
     parser.add_argument("--limit", type=int, default=None)
@@ -33,6 +40,15 @@ def main() -> None:
         f"xử lý: {summary.processed} | lỗi: {summary.errored} | "
         f"thời gian: {summary.elapsed_seconds:.1f}s"
     )
+    if summary.processed > 0 and summary.errored == summary.processed:
+        print(
+            "⚠️  Mọi câu hỏi xử lý trong lượt này đều lỗi — có thể do --dataset-dir sai "
+            "(phải là output của data_loader.build_all, không phải thư mục dữ liệu thô) "
+            "hoặc model server không chạy. Xoá/sửa submission trước khi chạy lại, vì resume "
+            "sẽ coi các dòng lỗi này là đã xong.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

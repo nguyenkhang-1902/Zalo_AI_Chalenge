@@ -17,7 +17,8 @@ script ad-hoc (đã từng làm vậy ở Task 7 của `004`) — không tái d�
 Docker được. 005 là mảnh ghép bắt buộc để có 1 pipeline hoàn chỉnh từ input thật ra output thật.
 
 **Independent Test**: Chạy CLI trên 1 mẫu nhỏ (5-10 câu lấy từ `train/questions.jsonl`,
-`--dataset-dir train/`), ra `submission.jsonl`, chạy `score_submission` (003) trên file đó —
+`--dataset-dir` trỏ tới output ĐÃ BUILD của `data_loader.build_all --dataset-dir train/ --out <dir>`),
+ra `submission.jsonl`, chạy `score_submission` (003) trên file đó —
 không lỗi format, có điểm số (dù thấp) — không cần `006-docker-packaging` tồn tại.
 
 **Acceptance Scenarios**:
