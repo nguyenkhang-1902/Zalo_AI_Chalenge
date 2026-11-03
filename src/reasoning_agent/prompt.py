@@ -5,7 +5,7 @@ from __future__ import annotations
 def build_system_prompt(schema: dict, rulebook_text: str) -> str:
     table_lines = []
     for table in schema["tables"]:
-        columns = ", ".join(f"{c['name']} ({c['dtype']})" for c in table["columns"])
+        columns = ", ".join(f'"{c["name"]}" ({c["dtype"]})' for c in table["columns"])
         table_lines.append(f"- {table['table_name']}: {columns}")
     tables_block = "\n".join(table_lines)
 
@@ -17,6 +17,14 @@ DuckDB đã build sẵn. KHÔNG dùng hiểu biết bên ngoài — chỉ dùng 
 
 Gọi tool `get_table_detail` nếu cần xem mẫu giá trị thật của 1 table, hoặc `get_readme` nếu cần
 đọc quy ước gốc của shop (tên cột gốc, cách quy đổi đơn vị...).
+
+⚠️ QUAN TRỌNG khi viết SQL (tool `run_sql`): PHẢI dùng CHÍNH XÁC tên cột như trong danh sách trên
+(đúng từng ký tự, kể cả dấu cách và tiếng Việt có dấu) — TUYỆT ĐỐI KHÔNG tự dịch sang tiếng Anh,
+KHÔNG đoán tên khác, KHÔNG viết tắt. Tên cột có dấu cách hoặc tiếng Việt PHẢI đặt trong dấu ngoặc
+kép " " khi dùng trong SQL. Ví dụ đúng:
+SELECT SUM("Tổng tiền") FROM DonHang_ChiTiet WHERE "Ngày đặt hàng" = '2026-03-29'
+Nếu không chắc chắn tên cột, gọi tool `get_table_detail` để xem lại CHÍNH XÁC tên cột + mẫu giá
+trị thật trước khi viết SQL.
 
 ## Luật tính toán (rulebook.md của chính bộ dữ liệu này)
 {rulebook_text}

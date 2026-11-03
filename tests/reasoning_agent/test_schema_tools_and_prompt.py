@@ -59,3 +59,5 @@ def test_system_prompt_includes_table_names_and_rulebook_text(tmp_path):
     assert "LUẬT RIÊNG: test marker 12345" in prompt
     assert "query_end" in prompt
     assert "submit_answer" in prompt
+    assert '"Mã đơn hàng"' in prompt  # tên cột PHẢI xuất hiện có ngoặc kép trong phần liệt kê table
+    assert "KHÔNG" in prompt and "đoán" in prompt  # có cảnh báo chống đoán/hallucinate tên cột
