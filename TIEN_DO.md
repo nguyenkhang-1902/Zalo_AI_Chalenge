@@ -262,3 +262,28 @@ commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
   cần đo lại accuracy trước khi nộp Docker thật.
 - [ ] 🔜 Bắt đầu `005-answer-formatter` (chuẩn hoá format đáp án cuối theo rulebook §9 — FR-010
   của `004` đã nói rõ: `answer_question()` không cần đúng format tuyệt đối, việc đó thuộc 005).
+
+## 6. ĐỢT 2026-11-03 — Spec/plan + thực thi code `007-accuracy-without-training`
+
+- [x] ✅ Nhận Q&A của BTC → ghi vào `constitution.md` v1.1 (rule 8.9); Khang chọn hướng (c) "kết hợp"
+  nhưng chỉ có máy hiện tại (RTX 3050 6GB), không GPU thuê, không API teacher → fine-tune hoãn,
+  hướng đi = tăng accuracy KHÔNG cần train (checklist C8).
+- [x] ✅ Spec + plan + tasks `007` (`specs/007-accuracy-without-training/`). Mục tiêu chính là **PA**
+  (đúng +1, abstain 0, sai −1) chứ không phải accuracy thô: trả lời hết với precision < 50% thì điểm âm.
+- [x] ✅ `subagent-driven-development` Task 1–5 (7 commit `f3b64f5`…`7ffdd5b`) + final review (opus) + 1 fix
+  wave (`282a9d0`):
+  - T1 `AgentOptions` + sampling params (+ sửa `json.dumps` nổ khi tool trả `Decimal`/`date`).
+  - T2 `accuracy_boost/consensus.py` (bỏ phiếu, "hết ngân sách" = phiếu abstain, đường cong PA).
+  - T3 `gated.py`/`devset.py`/`measure.py`/`config.py` + `runner` 005 không ghi dòng `abstain`
+    (fix wave: resume chịu được dòng JSONL bị cắt, lượt lỗi được thử lại).
+  - T4 `reasoning_agent/semantic_tools.py` (`aggregate`, `percent_change`).
+  - T5 `accuracy_boost/fewshot.py` (chỉ truyền `type`, loại trừ bộ dev, giới hạn `--fewshot-max-chars`).
+  - Final review bắt 2 lỗi nối giữa module: consensus/PA nhìn đáp án thô trong khi nộp bài chấm đáp án
+    đã chuẩn hoá (I-1); server chết trông như abstain và không được thử lại (I-2) — đã sửa.
+- [ ] 🔜 **Task 6** (vận hành): đo A/B trên bộ dev bằng server Ollama thật — baseline vs cổng tin cậy vs
+  semantic-layer vs few-shot, kiểm tính tất định, rồi 14B-Q4 (hỏi Khang trước khi tải GGUF).
+  Cần chạy nhiều giờ trên máy dev; bắt đầu `--limit 60`. Chưa chạy.
+- [ ] 🔜 **Cho 006**: nối cổng tin cậy vào đường tạo `submission.jsonl` (hiện chỉ dùng được qua
+  `accuracy_boost.measure`; `answer_formatter` CLI vẫn gọi `answer_question` mặc định); validate config
+  (`n_runs >= 1`, `0 <= threshold <= 1`); `runner` hiện ghi lỗi hạ tầng thành `unanswerable` (−1) — xem lại
+  khi Docker guideline chốt định dạng abstain.
