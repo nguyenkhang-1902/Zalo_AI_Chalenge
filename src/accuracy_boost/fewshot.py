@@ -20,6 +20,9 @@ def _load_jsonl(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+_HEADER = "## Câu hỏi tương tự trong bộ huấn luyện (chỉ để tham khảo kiểu đáp án)"
+
+
 class FewShotPool:
     def __init__(self, items: list[dict]):
         self._items = [{**item, "tokens": _tokens(item["question"])} for item in items]
@@ -38,6 +41,8 @@ class FewShotPool:
         return cls(items)
 
     def select(self, question: str, k: int, exclude_questions: frozenset[str] = frozenset()) -> list[dict]:
+        if k <= 0:
+            return []
         query = _tokens(question)
         scored = []
         for item in self._items:
@@ -58,9 +63,14 @@ class FewShotPool:
                 break
         return picked
 
-    def format_prompt(self, question: str, k: int, exclude_questions: frozenset[str] = frozenset()) -> str:
-        examples = self.select(question, k, exclude_questions)
-        if not examples:
-            return ""
-        lines = [f'- "{e["question"]}" → type={e["type"]}' for e in examples]
-        return "## Câu hỏi tương tự trong bộ huấn luyện (chỉ để tham khảo kiểu đáp án)\n" + "\n".join(lines)
+    def format_prompt(
+        self, question: str, k: int, exclude_questions: frozenset[str] = frozenset(), max_chars: int | None = None
+    ) -> str:
+        text = _HEADER
+        for example in self.select(question, k, exclude_questions):
+            line = f'- "{example["question"]}" → type={example["type"]}'
+            candidate = f"{text}\n{line}"
+            if max_chars is not None and len(candidate) > max_chars:
+                break
+            text = candidate
+        return "" if text == _HEADER else text

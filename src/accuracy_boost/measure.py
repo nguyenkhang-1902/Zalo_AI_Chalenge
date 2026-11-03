@@ -129,7 +129,10 @@ def _build_options(args, train_dir: Path, exclude_questions: frozenset[str]) -> 
     prompt_extra_fn = None
     if args.fewshot_k > 0:
         pool = FewShotPool.from_train_dir(train_dir)
-        prompt_extra_fn = lambda question: pool.format_prompt(question, args.fewshot_k, exclude_questions)
+
+        def prompt_extra_fn(question: str) -> str:
+            return pool.format_prompt(question, args.fewshot_k, exclude_questions, args.fewshot_max_chars)
+
     return AgentOptions(
         seed=load_boost_config().base_seed, semantic_tools=args.semantic_tools, prompt_extra_fn=prompt_extra_fn
     )
@@ -183,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     collect.add_argument("--n-runs", type=int, default=0)
     collect.add_argument("--semantic-tools", action="store_true")
     collect.add_argument("--fewshot-k", type=int, default=0)
+    collect.add_argument("--fewshot-max-chars", type=int, default=1500)
     collect.set_defaults(func=_cmd_collect)
 
     report = sub.add_parser("report")

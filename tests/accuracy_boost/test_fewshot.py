@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 
@@ -17,7 +18,7 @@ def _train_dir(tmp_path):
         encoding="utf-8",
     )
     (tmp_path / "answers.jsonl").write_text(
-        "".join(json.dumps({"id": i, "type": t, "answer": 1, "alias": []}) + "\n" for i, _, t in rows),
+        "".join(json.dumps({"id": i, "type": t, "answer": 987654, "alias": []}) + "\n" for i, _, t in rows),
         encoding="utf-8",
     )
     return tmp_path
@@ -40,9 +41,33 @@ def test_excludes_identical_and_listed_questions(tmp_path):
 
 def test_format_prompt_lists_type_only(tmp_path):
     pool = FewShotPool.from_train_dir(_train_dir(tmp_path))
-    text = pool.format_prompt("Doanh thu tuần này?", k=2)
-    assert "type=" in text and "đáp án" not in text.split("\n", 1)[1]
+    lines = pool.format_prompt("Doanh thu tuần này?", k=2).splitlines()
+    assert len(lines) == 3
+    assert all(re.fullmatch(r'- ".+" → type=(number|percent|list|table)', line) for line in lines[1:])
+    assert "987654" not in "\n".join(lines)
     assert FewShotPool([]).format_prompt("x", k=2) == ""
+
+
+def test_format_prompt_max_chars_keeps_whole_examples(tmp_path):
+    pool = FewShotPool.from_train_dir(_train_dir(tmp_path))
+    full = pool.format_prompt("Doanh thu tuần này?", k=3)
+    one = pool.format_prompt("Doanh thu tuần này?", k=1)
+    capped = pool.format_prompt("Doanh thu tuần này?", k=3, max_chars=len(one) + 1)
+    assert capped == one
+    assert len(full) > len(one)
+    assert pool.format_prompt("Doanh thu tuần này?", k=3, max_chars=len(full)) == full
+
+
+def test_format_prompt_max_chars_too_small_returns_empty(tmp_path):
+    pool = FewShotPool.from_train_dir(_train_dir(tmp_path))
+    assert pool.format_prompt("Doanh thu tuần này?", k=3, max_chars=10) == ""
+
+
+def test_non_positive_k_returns_nothing(tmp_path):
+    pool = FewShotPool.from_train_dir(_train_dir(tmp_path))
+    assert pool.select("Doanh thu tuần này?", k=0) == []
+    assert pool.select("Doanh thu tuần này?", k=-1) == []
+    assert pool.format_prompt("Doanh thu tuần này?", k=0) == ""
 
 
 def test_requires_answers_file(tmp_path):

@@ -103,3 +103,58 @@ def test_collect_cli_excludes_dev_questions_from_fewshot(tmp_path, monkeypatch):
     measure.main(["collect", "--train-dir", str(train), "--dataset-dir", str(tmp_path / "d"),
                   "--out", str(tmp_path / "o.jsonl"), "--size", "6", "--fewshot-k", "3"])
     assert captured["extra"] == ""
+
+
+def test_collect_cli_limit_still_excludes_full_devset_from_fewshot(tmp_path, monkeypatch):
+    from accuracy_boost import measure
+    from accuracy_boost.devset import build_devset
+
+    captured = {}
+
+    def fake_collect(devset, dataset_dir, out_path, **kwargs):
+        captured["subset"] = [q["question"] for q in devset]
+        captured["extra"] = kwargs["base_options"].prompt_extra_fn(devset[0]["question"])
+        return 0
+
+    train = tmp_path / "train"
+    train.mkdir()
+    (train / "rulebook.md").write_text("r", encoding="utf-8")
+    (train / "calendar.csv").write_text("c", encoding="utf-8")
+    questions = [{"id": f"q{i}", "business_id": "b", "question": f"doanh thu thang {i}", "as_of_date": "2026-01-01"} for i in range(8)]
+    answers = {q["id"]: {"id": q["id"], "type": "number", "answer": 1, "alias": []} for q in questions}
+    (train / "questions.jsonl").write_text("".join(json.dumps(q) + "\n" for q in questions), encoding="utf-8")
+    (train / "answers.jsonl").write_text("".join(json.dumps(a) + "\n" for a in answers.values()), encoding="utf-8")
+
+    monkeypatch.setattr(measure, "collect_runs", fake_collect)
+    monkeypatch.setattr(measure, "prepare_dataset_dir", lambda *a, **k: None)
+    measure.main(["collect", "--train-dir", str(train), "--dataset-dir", str(tmp_path / "d"),
+                  "--out", str(tmp_path / "o.jsonl"), "--size", "6", "--limit", "2", "--fewshot-k", "8"])
+
+    full_dev = {q["question"] for q in build_devset(questions, answers, size=6)}
+    assert len(captured["subset"]) == 2 and len(full_dev) == 6
+    assert captured["extra"] != ""
+    assert not any(f'"{text}"' in captured["extra"] for text in full_dev)
+
+
+def test_collect_cli_passes_fewshot_max_chars(tmp_path, monkeypatch):
+    from accuracy_boost import measure
+
+    captured = {}
+
+    def fake_collect(devset, dataset_dir, out_path, **kwargs):
+        captured["extra"] = kwargs["base_options"].prompt_extra_fn("doanh thu thang x")
+        return 0
+
+    train = tmp_path / "train"
+    train.mkdir()
+    (train / "rulebook.md").write_text("r", encoding="utf-8")
+    (train / "calendar.csv").write_text("c", encoding="utf-8")
+    questions = [{"id": f"q{i}", "business_id": "b", "question": f"doanh thu thang {i}", "as_of_date": "2026-01-01"} for i in range(8)]
+    (train / "questions.jsonl").write_text("".join(json.dumps(q) + "\n" for q in questions), encoding="utf-8")
+    (train / "answers.jsonl").write_text("".join(json.dumps({"id": q["id"], "type": "number", "answer": 1, "alias": []}) + "\n" for q in questions), encoding="utf-8")
+
+    monkeypatch.setattr(measure, "collect_runs", fake_collect)
+    monkeypatch.setattr(measure, "prepare_dataset_dir", lambda *a, **k: None)
+    measure.main(["collect", "--train-dir", str(train), "--dataset-dir", str(tmp_path / "d"),
+                  "--out", str(tmp_path / "o.jsonl"), "--size", "2", "--fewshot-k", "8", "--fewshot-max-chars", "40"])
+    assert captured["extra"] == ""
