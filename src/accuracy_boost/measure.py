@@ -31,6 +31,19 @@ def _load_jsonl(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+def _load_runs_rows(path: Path) -> list[dict]:
+    rows = []
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue  # dòng cụt do collector bị kill giữa chừng
+    return rows
+
+
 def prepare_dataset_dir(train_dir: Path, business_ids: list[str], dataset_dir: Path) -> None:
     dataset_dir.mkdir(parents=True, exist_ok=True)
     for name in ("rulebook.md", "calendar.csv"):
@@ -44,8 +57,9 @@ def _done_keys(path: Path) -> set[tuple[str, int]]:
     if not path.exists():
         return set()
     done = set()
-    for row in _load_jsonl(path):
-        done.add((row["id"], row["run"]))
+    for row in _load_runs_rows(path):
+        if "error" not in row["result"]:
+            done.add((row["id"], row["run"]))
     return done
 
 
@@ -62,6 +76,13 @@ def collect_runs(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     done = _done_keys(out_path)
     written = 0
+    if out_path.exists() and out_path.stat().st_size:
+        with out_path.open("rb") as f:
+            f.seek(-1, 2)
+            needs_newline = f.read(1) != b"\n"
+        if needs_newline:
+            with out_path.open("a", encoding="utf-8") as f:
+                f.write("\n")
     with out_path.open("a", encoding="utf-8") as out_file:
         for q in devset:
             for run_index in range(n_runs):
@@ -86,13 +107,13 @@ def collect_runs(
 
 def load_runs(path: Path) -> dict[str, list[dict]]:
     by_id: dict[str, dict[int, dict]] = defaultdict(dict)
-    for row in _load_jsonl(path):
+    for row in _load_runs_rows(path):
         by_id[row["id"]][row["run"]] = row["result"]
     return {qid: [runs[i] for i in sorted(runs)] for qid, runs in by_id.items()}
 
 
 def mean_elapsed(path: Path) -> float:
-    rows = _load_jsonl(path)
+    rows = _load_runs_rows(path)
     return sum(r["elapsed"] for r in rows) / len(rows) if rows else 0.0
 
 

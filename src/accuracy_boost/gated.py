@@ -2,6 +2,7 @@
 base+i (FR-010: tất định theo chỉ số lần chạy, không theo question_id)."""
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -10,6 +11,8 @@ from typing import Callable
 from accuracy_boost.consensus import decide
 from reasoning_agent import answer_question
 from reasoning_agent.options import AgentOptions
+
+logger = logging.getLogger(__name__)
 
 ABSTAIN = {"type": "abstain"}
 
@@ -39,7 +42,8 @@ def answer_with_gate(
             results.append(run_fn(question, business_id, as_of_date, dataset_dir, options=options))
         except FileNotFoundError:
             raise
-        except Exception:  # noqa: BLE001 - 1 lần chạy lỗi chỉ là 1 phiếu abstain
+        except Exception as exc:  # noqa: BLE001 - 1 lần chạy lỗi chỉ là 1 phiếu abstain
+            logger.warning("run %d failed, counted as abstain: %s", run_index, exc)
             results.append(dict(ABSTAIN))
     decision = decide(results, threshold)
     return decision.result if decision.result is not None else dict(ABSTAIN)
