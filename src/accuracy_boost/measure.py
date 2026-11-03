@@ -23,8 +23,10 @@ from accuracy_boost.gated import options_for_run
 from data_loader.build_business_db import build_business
 from reasoning_agent import answer_question
 from reasoning_agent.options import AgentOptions
+from reasoning_agent.react_loop import BUDGET_EXHAUSTED_REASON
 
 DEFAULT_TRAIN_DIR = Path("train")
+FAST_FAILURE_SECONDS = 2.0  # hết ngân sách thật mất nhiều giây; server chết thì trả về gần như tức thì
 
 
 def _load_jsonl(path: Path) -> list[dict]:
@@ -54,12 +56,21 @@ def prepare_dataset_dir(train_dir: Path, business_ids: list[str], dataset_dir: P
             build_business(train_dir / "data" / business_id, dataset_dir)
 
 
+def _is_budget_exhausted(row: dict) -> bool:
+    result = row["result"]
+    return result.get("type") == "unanswerable" and result.get("reason") == BUDGET_EXHAUSTED_REASON
+
+
+def _is_fast_budget_exhausted(row: dict) -> bool:
+    return _is_budget_exhausted(row) and row.get("elapsed", 0.0) < FAST_FAILURE_SECONDS
+
+
 def _done_keys(path: Path) -> set[tuple[str, int]]:
     if not path.exists():
         return set()
     done = set()
     for row in _load_runs_rows(path):
-        if "error" not in row["result"]:
+        if "error" not in row["result"] and not _is_fast_budget_exhausted(row):
             done.add((row["id"], row["run"]))
     return done
 
@@ -169,7 +180,10 @@ def _cmd_report(args) -> int:
     print(format_curve(pa_curve(greedy, answers_by_id, [0.0])))
     print("\n### Cổng tin cậy theo ngưỡng")
     print(format_curve(pa_curve(runs, answers_by_id, thresholds)))
-    print(f"\nthời gian TB/lượt chạy: {mean_elapsed(Path(args.runs)):.1f}s, số câu: {len(runs)}")
+    exhausted = [r for r in _load_runs_rows(Path(args.runs)) if _is_budget_exhausted(r)]
+    fast = sum(_is_fast_budget_exhausted(r) for r in exhausted)
+    print(f"\nbudget-exhausted: {len(exhausted)} (fast: {fast}) — fast cao nghĩa là server model có thể đã chết")
+    print(f"thời gian TB/lượt chạy: {mean_elapsed(Path(args.runs)):.1f}s, số câu: {len(runs)}")
     return 0
 
 

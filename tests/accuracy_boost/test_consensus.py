@@ -63,3 +63,21 @@ def test_pa_curve_scores_plus_minus_and_abstain():
     assert low["pa"] == 0.0
     assert (high["correct"], high["wrong"], high["abstained"]) == (1, 0, 1)
     assert high["pa"] == 0.5
+
+
+def test_table_aliases_do_not_collapse_different_tables_and_gate_abstains():
+    t1 = {"type": "table", "answer": {"cols": ["a"], "data": [[1]]}}
+    t2 = {"type": "table", "answer": {"cols": ["a"], "data": [[2]]}}
+    assert answer_key(decide([t1], 0.0).result) != answer_key(decide([t2], 0.0).result)
+    assert decide([t1, t2], threshold=1.0).result is None
+
+
+def test_abstain_passes_through_decide_normalization():
+    assert decide([ABSTAIN, A], threshold=0.5).result == A
+    assert decide([ABSTAIN, ABSTAIN], threshold=0.5).result is None
+
+
+def test_pa_curve_scores_normalized_percent():
+    runs = {"q": [{"type": "percent", "answer": 12.3456}]}
+    truth = {"q": {"type": "percent", "answer": 12.35}}
+    assert pa_curve(runs, truth, [0.0])[0]["correct"] == 1

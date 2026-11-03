@@ -8,6 +8,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass
 
+from answer_formatter.normalize import normalize_answer
 from eval_harness.matchers import is_correct
 from reasoning_agent.react_loop import BUDGET_EXHAUSTED_REASON
 
@@ -45,6 +46,7 @@ def answer_key(result: dict) -> str:
 def decide(results: list[dict], threshold: float) -> Decision:
     if not results:
         raise ValueError("decide cần ít nhất 1 kết quả")
+    results = [normalize_answer(r) for r in results]  # đúng thứ runner ghi vào submission
     keys = [answer_key(r) for r in results]
     counts = Counter(k for k in keys if k != ABSTAIN_KEY)
     if not counts:

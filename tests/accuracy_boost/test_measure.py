@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 
-from accuracy_boost.measure import collect_runs, format_curve, load_runs, mean_elapsed
+from accuracy_boost.measure import FAST_FAILURE_SECONDS, collect_runs, format_curve, load_runs, main, mean_elapsed
 from reasoning_agent.options import AgentOptions
+from reasoning_agent.react_loop import BUDGET_EXHAUSTED_REASON
 
 DEV = [
     {"id": "q1", "business_id": "b", "question": "x", "as_of_date": "2026-01-01"},
@@ -158,3 +159,39 @@ def test_collect_cli_passes_fewshot_max_chars(tmp_path, monkeypatch):
     measure.main(["collect", "--train-dir", str(train), "--dataset-dir", str(tmp_path / "d"),
                   "--out", str(tmp_path / "o.jsonl"), "--size", "2", "--fewshot-k", "8", "--fewshot-max-chars", "40"])
     assert captured["extra"] == ""
+
+
+def _budget_row(qid, elapsed):
+    result = {"type": "unanswerable", "reason": BUDGET_EXHAUSTED_REASON}
+    return json.dumps({"id": qid, "run": 0, "elapsed": elapsed, "result": result}) + "\n"
+
+
+def _recollect(out):
+    def run_fn(*args, **kwargs):
+        return {"type": "number", "answer": 7}
+
+    kwargs = dict(n_runs=1, sample_temperature=0.7, base_options=AgentOptions(), run_fn=run_fn)
+    return collect_runs(DEV[:1], Path("."), out, **kwargs)
+
+
+def test_fast_budget_exhausted_row_is_retried_and_later_row_wins(tmp_path):
+    out = tmp_path / "runs.jsonl"
+    out.write_text(_budget_row("q1", 0.1), encoding="utf-8")
+    assert _recollect(out) == 1
+    assert load_runs(out)["q1"] == [{"type": "number", "answer": 7}]
+
+
+def test_slow_budget_exhausted_row_stays_done(tmp_path):
+    out = tmp_path / "runs.jsonl"
+    out.write_text(_budget_row("q1", FAST_FAILURE_SECONDS + 10), encoding="utf-8")
+    assert _recollect(out) == 0
+
+
+def test_report_prints_budget_exhausted_counts(tmp_path, capsys):
+    train = tmp_path / "train"
+    train.mkdir()
+    (train / "answers.jsonl").write_text(json.dumps({"id": "q1", "type": "number", "answer": 1}) + "\n", encoding="utf-8")
+    out = tmp_path / "runs.jsonl"
+    out.write_text(_budget_row("q1", 0.1) + _budget_row("q2", 30.0).replace('"run": 0', '"run": 1'), encoding="utf-8")
+    assert main(["report", "--train-dir", str(train), "--runs", str(out)]) == 0
+    assert "budget-exhausted: 2 (fast: 1)" in capsys.readouterr().out
