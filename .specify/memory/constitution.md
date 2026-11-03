@@ -112,8 +112,11 @@ Dữ liệu, README, câu hỏi đều tiếng Việt (có dấu, không dấu, 
 8. **Ràng buộc đặc thù cuộc thi** (8 rule chính thức từ BTC, không thương lượng):
    1. Tuân quy chế chung Zalo AI Challenge 2026 + điều kiện dự thi.
    2. Model dùng lúc inference (LLM/embedding/reranker/classifier...) cộng lại ≤ **15 tỷ tham số**
-      (tính cả MoE đầy đủ tham số), weight phải public trước 01/10/2026, licence cho phép dùng,
-      được fine-tune tự do, quantize tự do. Phải khai báo model trong README của solution.
+      (tính cả MoE đầy đủ tham số), weight phải public trước **26/10/2026**, licence cho phép dùng
+      (OSI hợp lệ; license không rõ/non-commercial/no-derivatives phải có văn bản cho phép của
+      chủ sở hữu, gửi aichallenge@zalo.me trước 16/11), được fine-tune tự do. **LoRA/adapter,
+      embedder, reranker, classifier đều tính vào tổng; quantize vẫn tính theo kích thước gốc**
+      (ví dụ 14B + LoRA 1B = 15B). Phải khai báo model trong README của solution.
    3. **Không gọi API/service ngoài** — Docker chạy hoàn toàn offline, mạng bị tắt khi BTC chạy.
    4. **Không human-in-the-loop** — không hard-code đáp án, không logic khoá theo
       `business_id`/`question_id`.
@@ -128,6 +131,28 @@ Dữ liệu, README, câu hỏi đều tiếng Việt (có dấu, không dấu, 
    8. **Reproducibility**: điểm của lượt BTC tự re-run trên private test là điểm cuối cùng.
       Phải tất định đủ để `|PA(nộp) − PA(re-run)| ≤ 0.03`; lệch quá ngưỡng → BTC xem log,
       có thể re-run lại hoặc disqualify nếu không giải thích được.
+9. **Làm rõ từ BTC (Q&A, nhận 2026-11-03) — có hiệu lực như luật**:
+   1. **Dữ liệu train/synthetic được phép rộng**: dùng dataset public (kể cả trên mạng, KHÔNG
+      dùng data do BTC cấp ngoài train), tự gán nhãn thủ công, tự synthesize, dùng LLM lớn hơn 15B
+      hoặc **LLM qua API bên ngoài để sinh data / distill** cho model nhỏ — đều hợp lệ, miễn
+      lúc inference vẫn offline và tổng ≤15B. Data tự tạo **phải gửi BTC để verify**.
+   2. **Tuyệt đối KHÔNG dùng `public_test`/`private_test`** (dữ liệu shop, câu hỏi, rulebook) để
+      train, inference, hay làm nguồn sinh data. Rulebook của `train/` được phép đóng gói sẵn
+      trong Docker (vd để so sánh phát hiện luật đổi); rulebook của bộ test thì KHÔNG.
+   3. **Phải đóng gói TOÀN BỘ solution cho BTC**: code inference + code train/fine-tune + dữ
+      liệu dùng để train (data gán nhãn thủ công thì cung cấp data, không bắt reproduce) + tài liệu —
+      để cả train lẫn dùng đều tái lập được.
+   4. **Hạ tầng chấm**: 2×RTX 5090, driver 5090, **CUDA 12.9**, giới hạn dung lượng image
+      **100** (đơn vị ghi theo slide, cần xác nhận GB), **nộp qua Google Drive** (+checksum, tối đa
+      2 lần, tính lần cuối). BTC chạy lại khoảng **2–3 lần**, chỉ chạy phần inference; chỉ chạy
+      thật khi có private test nhưng sẽ cố thử môi trường trước. Hướng dẫn Docker chính thức BTC
+      hứa công bố trong tuần 2026-11-03 — đọc ngay khi có.
+   5. **Nhiều lượt private**: kết quả tính theo Docker nộp cuối. Tự chạy private (20–23/11) bằng
+      đúng Docker đã nộp trên máy mình rồi upload `submission.jsonl` lên portal.
+   6. **Tất định**: suy luận theo batch có thể làm greedy khác nhau giữa các lần chạy → phải kiểm
+      tra tính tất định của Docker thật (seed cố định, temperature 0, batch cố định) trước khi nộp.
+   7. Slide "30 giây/mẫu", "<6B", ASR là luật **LifeMate**, không áp dụng cho DataMate.
+   8. Chưa rõ: định dạng trường `code`/`output` trong `/result/logs` — chờ Docker guideline.
 
 ## 🔁 Quy trình Spec-Driven (cách dùng hiến pháp này)
 
@@ -147,5 +172,6 @@ constitution (xong) → specify (spec.md mỗi sub-project) → clarify → plan
   cập nhật ngày.
 - Phát hiện phải vi phạm 1 điều để khả thi → dừng, tự Khang quyết (solo, mục 7).
 
-**Version**: 1.0 | **Ratified**: 2026-10-29 | **Last Amended**: 2026-10-29
+**Version**: 1.1 | **Ratified**: 2026-10-29 | **Last Amended**: 2026-11-03
 > 📅 Changelog: v1.0 (2026-10-29) — Khởi tạo hiến pháp dự án, chốt luật cuộc thi + thứ tự 6 sub-project.
+> v1.1 (2026-11-03) — MINOR: thêm rule 8.9 (làm rõ từ BTC: synthetic/distill/API được phép, đóng gói train+data, CUDA 12.9, nộp Drive, LoRA tính vào 15B); sửa mốc weight public 01/10 → 26/10.

@@ -75,6 +75,20 @@
   (ngoại lệ `shift_session`, không có khái niệm khoảng ngày) — xem FR-004 +
   `specs/004-reasoning-agent/reasoning-agent-plan.md` mục "Đính chính lúc viết plan".
 
+- [ ] C8. **Hướng đi sau Q&A của BTC (2026-11-03) — Khang quyết.** BTC cho phép fine-tune/distill
+  bằng LLM lớn hoặc API ngoài + data tự sinh (không dùng public_test), miễn đóng gói cả train + data
+  và inference offline ≤15B (LoRA tính vào). Mở ra 3 hướng cho vấn đề accuracy ~10% của C7:
+  (a) bỏ fine-tune, chỉ đổi model 14B + few-shot lấy từ `train/` (rẻ, ít rủi ro, trần thấp);
+  (b) rejection-sampling fine-tune: teacher mạnh (API) sinh quỹ đạo tool-call trên câu hỏi train,
+  lọc bằng `answers.jsonl`, SFT/LoRA cho model ≤15B (khuyến nghị, cần GPU thuê để train);
+  (c) kết hợp: làm (a) trước làm baseline an toàn, rồi (b) nếu còn thời gian.
+  Việc cần làm bất kể hướng nào: kiểm tính tất định batch trên Docker thật; chờ Docker guideline.
+  ✅ **Khang chọn (c) kết hợp (2026-11-03)**: làm (a) trước làm baseline an toàn, rồi (b) nếu còn
+  thời gian. Chưa duyệt spec/plan → chưa code.
+  📌 **Ràng buộc nguồn lực (Khang xác nhận 2026-11-03)**: chỉ có máy hiện tại (RTX 3050 6GB /
+  laptop 16GB), KHÔNG có GPU thuê, KHÔNG có API teacher. → (b) fine-tune/distill coi như hoãn
+  (chỉ còn đường self-distill + Kaggle/Colab free, rủi ro cao); trọng tâm là (a) mở rộng không cần
+  train: đo 14B-Q4 qua llama.cpp, few-shot từ `train/`, semantic-layer tool, abstain theo độ tin cậy.
 - [ ] C7. **`004-reasoning-agent` Task 1-6 xong, review clean (40/40 test); Task 7 (baseline thật
   100 câu) lộ ra máy dev hiện tại (RTX 3050 6GB) không đủ mạnh để đo accuracy thật đáng tin —
   Khang đã tạm chấp nhận (2026-11-03), ghi lại để quyết dứt điểm trước khi nộp Docker thật.**

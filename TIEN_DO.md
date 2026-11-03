@@ -8,7 +8,8 @@
 - **16/11/2026 23:59 (GMT+7)**: hạn nộp **Docker package** cuối cùng (kèm checksum + Google Drive link). Tối đa 2 lần nộp, chỉ tính lần cuối.
 - **Round 2 — Private test**: BTC mở 9:00 20/11, hạn nộp kết quả 23:59 23/11/2026.
 - **Công bố top 2**: 02/12/2026.
-- ⚠️ **Còn ~18 ngày tới hạn nộp Docker (29/10 → 16/11)** — ưu tiên có pipeline end-to-end chạy được sớm, tối ưu sau.
+- ⚠️ **Còn ~13 ngày tới hạn nộp Docker (cập nhật 3/11 → 16/11)** — ưu tiên có pipeline end-to-end chạy được sớm, tối ưu sau. Roster khoá từ 00:00 16/11.
+- 📣 **2026-11-03: BTC trả lời Q&A** — luật mới/làm rõ ghi ở `constitution.md` rule 8.9 (synthetic/distill/API được phép, phải đóng gói cả train + data, CUDA 12.9, image ≤100, nộp Google Drive, LoRA tính vào 15B). Quyết định hướng đi tiếp: CHECKLIST mục C8.
 
 ## 0. ĐỢT 2026-10-29 — Brainstorm & dựng nền tảng dự án
 
