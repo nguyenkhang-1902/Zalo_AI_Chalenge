@@ -24,14 +24,16 @@ def call_chat_completion(
     messages: list[dict],
     tools: list[dict],
     timeout: float,
+    temperature: float = TEMPERATURE,
+    seed: int = SEED,
 ) -> dict:
     body = {
         "model": config.model,
         "messages": messages,
         "tools": tools,
         "tool_choice": "auto",
-        "temperature": TEMPERATURE,
-        "seed": SEED,
+        "temperature": temperature,
+        "seed": seed,
     }
     headers = {"Content-Type": "application/json"}
     if config.api_key:

@@ -18,7 +18,8 @@ MAX_TOOL_CALLS = 6
 TIME_BUDGET_SECONDS = 45.0
 
 _VALID_TYPES = {"number", "percent", "date", "boolean", "string", "list", "table", "unanswerable"}
-_BUDGET_EXHAUSTED_RESULT = {"type": "unanswerable", "reason": "hết ngân sách bước suy luận"}
+BUDGET_EXHAUSTED_REASON = "hết ngân sách bước suy luận"
+_BUDGET_EXHAUSTED_RESULT = {"type": "unanswerable", "reason": BUDGET_EXHAUSTED_REASON}
 
 
 def _submit_answer_tool_spec() -> ToolSpec:
@@ -123,6 +124,6 @@ def run_react_loop(
                 {
                     "role": "tool",
                     "tool_call_id": tool_call["id"],
-                    "content": json.dumps(result, ensure_ascii=False),
+                    "content": json.dumps(result, ensure_ascii=False, default=str),
                 }
             )

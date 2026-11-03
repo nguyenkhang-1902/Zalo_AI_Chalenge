@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 
-def build_system_prompt(schema: dict, rulebook_text: str) -> str:
+def build_system_prompt(schema: dict, rulebook_text: str, extra: str = "") -> str:
     table_lines = []
     for table in schema["tables"]:
         columns = ", ".join(f'"{c["name"]}" ({c["dtype"]})' for c in table["columns"])
         table_lines.append(f"- {table['table_name']}: {columns}")
     tables_block = "\n".join(table_lines)
 
-    return f"""Bạn là agent trả lời câu hỏi kinh doanh tiếng Việt cho 1 shop, dựa trên dữ liệu
+    prompt = f"""Bạn là agent trả lời câu hỏi kinh doanh tiếng Việt cho 1 shop, dựa trên dữ liệu
 DuckDB đã build sẵn. KHÔNG dùng hiểu biết bên ngoài — chỉ dùng dữ liệu đọc được qua tool.
 
 ## Các table có sẵn (tên bảng: tên cột (dtype))
@@ -45,3 +45,4 @@ unanswerable. `answer_json` là chuỗi JSON-encode giá trị đáp án tương
 number, `"[\\"Cà phê sữa\\"]"` cho list, `"{{\\"columns\\":[...],\\"rows\\":[...]}}"` cho table).
 Nếu dữ liệu không đủ để trả lời theo rulebook mục 7, gọi `submit_answer` với `type="unanswerable"`
 và `reason` giải thích ngắn."""
+    return f"{prompt}\n\n{extra}" if extra else prompt

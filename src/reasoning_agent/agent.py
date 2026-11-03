@@ -10,13 +10,20 @@ from date_resolver import load_calendar
 from reasoning_agent.config import load_config
 from reasoning_agent.date_tools import build_date_tool_registry
 from reasoning_agent.llm_client import call_chat_completion
+from reasoning_agent.options import AgentOptions
 from reasoning_agent.prompt import build_system_prompt
 from reasoning_agent.react_loop import run_react_loop
 from reasoning_agent.schema_tools import build_schema_tools, load_schema
 from reasoning_agent.sql_tool import build_sql_tool
 
 
-def answer_question(question: str, business_id: str, as_of_date: date, dataset_dir: Path) -> dict:
+def answer_question(
+    question: str,
+    business_id: str,
+    as_of_date: date,
+    dataset_dir: Path,
+    options: AgentOptions | None = None,
+) -> dict:
     rulebook_path = dataset_dir / "rulebook.md"
     calendar_path = dataset_dir / "calendar.csv"
     if not rulebook_path.exists():
@@ -29,7 +36,9 @@ def answer_question(question: str, business_id: str, as_of_date: date, dataset_d
     schema = load_schema(dataset_dir, business_id)
 
     config = load_config()
-    system_prompt = build_system_prompt(schema, rulebook_text)
+    options = options or AgentOptions()
+    extra = options.prompt_extra_fn(question) if options.prompt_extra_fn else ""
+    system_prompt = build_system_prompt(schema, rulebook_text, extra)
 
     db_path = dataset_dir / f"{business_id}.duckdb"
     conn = duckdb.connect(str(db_path), read_only=True)
@@ -41,7 +50,9 @@ def answer_question(question: str, business_id: str, as_of_date: date, dataset_d
         }
 
         def chat_fn(messages: list[dict], tools: list[dict], timeout: float) -> dict:
-            return call_chat_completion(config, messages, tools, timeout)
+            return call_chat_completion(
+                config, messages, tools, timeout, temperature=options.temperature, seed=options.seed
+            )
 
         return run_react_loop(chat_fn, system_prompt, question, registry)
     finally:

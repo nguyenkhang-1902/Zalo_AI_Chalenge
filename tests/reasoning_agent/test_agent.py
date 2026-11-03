@@ -20,7 +20,7 @@ def test_answer_question_on_real_train_question_biz_102(tmp_path, monkeypatch):
 
     call_count = {"n": 0}
 
-    def fake_chat_fn(config, messages, tools, timeout):
+    def fake_chat_fn(config, messages, tools, timeout, **sampling):
         call_count["n"] += 1
         if call_count["n"] == 1:
             return {
