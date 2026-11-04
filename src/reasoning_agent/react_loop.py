@@ -3,6 +3,7 @@ dùng được; run_react_loop + submit_answer thêm ở Task 5."""
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -15,7 +16,7 @@ class ToolSpec:
 
 
 MAX_TOOL_CALLS = 6
-TIME_BUDGET_SECONDS = 45.0
+TIME_BUDGET_SECONDS = float(os.environ.get("REASONING_AGENT_TIME_BUDGET", "45"))
 
 _VALID_TYPES = {"number", "percent", "date", "boolean", "string", "list", "table", "unanswerable"}
 BUDGET_EXHAUSTED_REASON = "hết ngân sách bước suy luận"
