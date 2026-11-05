@@ -280,10 +280,11 @@ commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
   - T5 `accuracy_boost/fewshot.py` (chỉ truyền `type`, loại trừ bộ dev, giới hạn `--fewshot-max-chars`).
   - Final review bắt 2 lỗi nối giữa module: consensus/PA nhìn đáp án thô trong khi nộp bài chấm đáp án
     đã chuẩn hoá (I-1); server chết trông như abstain và không được thử lại (I-2) — đã sửa.
-- [~] 🔄 **Task 6** (vận hành): đã đo 60 câu dev (xem `docs/measure-007-results.md`): baseline PA -0.717,
-  cổng N=3 ngưỡng 1.0 tốt nhất PA -0.283, semantic tools PA -0.617 → nút thắt là năng lực 7B, không phải
-  cổng/tool. CÒN LẠI: few-shot (`--fewshot-k 3`, ~1h), kiểm tái lập |ΔPA|≤0.03; nếu few-shot <10% thì
-  HỎI Khang trước khi tải 14B-Q4 (~9GB). Cần Ollama trên máy dev, cloud session không chạy được.
+- [x] ✅ **Task 6** (đo 60 câu dev, xem `docs/measure-007-results.md`): baseline PA -0.717 (tái lập |ΔPA|=0);
+  cổng N=3 ngưỡng 1.0 PA -0.283; semantic tools -0.617; **few-shot k=3 PA -0.333 (5/60 đúng = 8.3%, <10%)**.
+  Few-shot tốt nhất về số câu đúng nhưng chậm (134s/câu) và 30/60 câu hết ngân sách 240s; ngân sách nộp
+  45s có thể làm tệ hơn → cần đo lại few-shot với ngân sách ~45s trước khi bật mặc định.
+  CÒN LẠI: Khang quyết có tải 14B-Q4 (~9GB) để đo hay không (quy ước: <10% thì hỏi); thử gộp few-shot + cổng.
 - [~] 🔄 **Cho 006**: nối cổng tin cậy vào đường tạo `submission.jsonl` (hiện chỉ dùng được qua
   `accuracy_boost.measure`; `answer_formatter` CLI vẫn gọi `answer_question` mặc định); validate config
   (`n_runs >= 1`, `0 <= threshold <= 1`); `runner` hiện ghi lỗi hạ tầng thành `unanswerable` (−1) — xem lại

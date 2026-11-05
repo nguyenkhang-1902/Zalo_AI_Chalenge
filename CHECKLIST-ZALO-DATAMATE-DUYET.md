@@ -91,7 +91,8 @@
   train: đo 14B-Q4 qua llama.cpp, few-shot từ `train/`, semantic-layer tool, abstain theo độ tin cậy.
   📊 **Kết quả đo 007 (60 câu dev, 2026-11-04)**: baseline PA -0.717; cổng N=3 ngưỡng 1.0 PA -0.283 (giảm
   lỗ, không dương); semantic tools PA -0.617. Kết luận: 7B không-train chỉ ~2–3% đúng. Chi tiết:
-  `docs/measure-007-results.md`. Chưa đo: few-shot, tái lập, 14B-Q4 (cần Khang đồng ý tải ~9GB).
+  `docs/measure-007-results.md`. Đo thêm (2026-11-05): tái lập đạt (ΔPA=0); few-shot k=3 PA -0.333,
+  5/60 đúng (8.3%) nhưng chậm, cần đo lại ở ngân sách 45s. Chưa đo: 14B-Q4 (cần Khang đồng ý tải ~9GB).
 - [ ] C7. **`004-reasoning-agent` Task 1-6 xong, review clean (40/40 test); Task 7 (baseline thật
   100 câu) lộ ra máy dev hiện tại (RTX 3050 6GB) không đủ mạnh để đo accuracy thật đáng tin —
   Khang đã tạm chấp nhận (2026-11-03), ghi lại để quyết dứt điểm trước khi nộp Docker thật.**
