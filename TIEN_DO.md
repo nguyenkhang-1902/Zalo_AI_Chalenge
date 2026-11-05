@@ -280,10 +280,14 @@ commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
   - T5 `accuracy_boost/fewshot.py` (chỉ truyền `type`, loại trừ bộ dev, giới hạn `--fewshot-max-chars`).
   - Final review bắt 2 lỗi nối giữa module: consensus/PA nhìn đáp án thô trong khi nộp bài chấm đáp án
     đã chuẩn hoá (I-1); server chết trông như abstain và không được thử lại (I-2) — đã sửa.
-- [ ] 🔜 **Task 6** (vận hành): đo A/B trên bộ dev bằng server Ollama thật — baseline vs cổng tin cậy vs
-  semantic-layer vs few-shot, kiểm tính tất định, rồi 14B-Q4 (hỏi Khang trước khi tải GGUF).
-  Cần chạy nhiều giờ trên máy dev; bắt đầu `--limit 60`. Chưa chạy.
-- [ ] 🔜 **Cho 006**: nối cổng tin cậy vào đường tạo `submission.jsonl` (hiện chỉ dùng được qua
+- [~] 🔄 **Task 6** (vận hành): đã đo 60 câu dev (xem `docs/measure-007-results.md`): baseline PA -0.717,
+  cổng N=3 ngưỡng 1.0 tốt nhất PA -0.283, semantic tools PA -0.617 → nút thắt là năng lực 7B, không phải
+  cổng/tool. CÒN LẠI: few-shot (`--fewshot-k 3`, ~1h), kiểm tái lập |ΔPA|≤0.03; nếu few-shot <10% thì
+  HỎI Khang trước khi tải 14B-Q4 (~9GB). Cần Ollama trên máy dev, cloud session không chạy được.
+- [~] 🔄 **Cho 006**: nối cổng tin cậy vào đường tạo `submission.jsonl` (hiện chỉ dùng được qua
   `accuracy_boost.measure`; `answer_formatter` CLI vẫn gọi `answer_question` mặc định); validate config
   (`n_runs >= 1`, `0 <= threshold <= 1`); `runner` hiện ghi lỗi hạ tầng thành `unanswerable` (−1) — xem lại
   khi Docker guideline chốt định dạng abstain.
+
+  ✅ Đã làm (cloud): `answer_formatter` CLI có cờ `--gate` (cổng tin cậy, tham số `ACCURACY_BOOST_*`);
+  `load_boost_config` validate (`n_runs>=1`, `0<=threshold<=1`, `sample_temperature>=0`). Còn: chờ Docker guideline BTC.

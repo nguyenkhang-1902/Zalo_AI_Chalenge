@@ -95,3 +95,20 @@ def test_cli_exits_nonzero_when_all_processed_questions_error(tmp_path, monkeypa
     with pytest.raises(SystemExit) as exc_info:
         cli.main()
     assert exc_info.value.code == 1
+
+
+def test_cli_gate_flag_passes_gated_answer_fn(tmp_path, monkeypatch):
+    captured = {}
+
+    def fake_run_batch(questions_path, dataset_dir, out_path, concurrency=1, limit=None, **kwargs):
+        captured.update(kwargs)
+        return BatchSummary(total=1, resumed_skipped=0, processed=1, errored=0, elapsed_seconds=0.1)
+
+    monkeypatch.setattr(cli, "run_batch", fake_run_batch)
+    monkeypatch.setattr(
+        "sys.argv",
+        ["answer-formatter", "--questions", str(tmp_path / "q.jsonl"),
+         "--dataset-dir", str(tmp_path), "--out", str(tmp_path / "o.jsonl"), "--gate"],
+    )
+    cli.main()
+    assert callable(captured["answer_fn"])

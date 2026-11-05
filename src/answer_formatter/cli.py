@@ -26,7 +26,22 @@ def main() -> None:
     parser.add_argument("--out", required=True)
     parser.add_argument("--concurrency", type=int, default=1)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        help="Bật cổng tin cậy (N lần chạy, đồng thuận < ngưỡng thì abstain); tham số ở env ACCURACY_BOOST_*",
+    )
     args = parser.parse_args()
+
+    extra = {}
+    if args.gate:
+        from accuracy_boost.config import load_boost_config
+        from accuracy_boost.gated import make_gated_answer_fn
+
+        cfg = load_boost_config()  # validate sớm, trước khi chạy lô
+        extra["answer_fn"] = make_gated_answer_fn(
+            n_runs=cfg.n_runs, threshold=cfg.threshold, sample_temperature=cfg.sample_temperature
+        )
 
     summary = run_batch(
         questions_path=Path(args.questions),
@@ -34,6 +49,7 @@ def main() -> None:
         out_path=Path(args.out),
         concurrency=args.concurrency,
         limit=args.limit,
+        **extra,
     )
     print(
         f"Tổng: {summary.total} | resume-skip: {summary.resumed_skipped} | "

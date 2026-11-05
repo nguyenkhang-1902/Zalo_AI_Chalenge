@@ -14,9 +14,16 @@ class BoostConfig:
 
 
 def load_boost_config() -> BoostConfig:
-    return BoostConfig(
+    cfg = BoostConfig(
         n_runs=int(os.environ.get("ACCURACY_BOOST_N_RUNS", "3")),
         threshold=float(os.environ.get("ACCURACY_BOOST_THRESHOLD", "0.6")),
         sample_temperature=float(os.environ.get("ACCURACY_BOOST_SAMPLE_TEMPERATURE", "0.7")),
         base_seed=int(os.environ.get("ACCURACY_BOOST_BASE_SEED", "42")),
     )
+    if cfg.n_runs < 1:
+        raise ValueError(f"ACCURACY_BOOST_N_RUNS phải >= 1, nhận {cfg.n_runs}")
+    if not 0.0 <= cfg.threshold <= 1.0:
+        raise ValueError(f"ACCURACY_BOOST_THRESHOLD phải trong [0, 1], nhận {cfg.threshold}")
+    if cfg.sample_temperature < 0.0:
+        raise ValueError(f"ACCURACY_BOOST_SAMPLE_TEMPERATURE phải >= 0, nhận {cfg.sample_temperature}")
+    return cfg

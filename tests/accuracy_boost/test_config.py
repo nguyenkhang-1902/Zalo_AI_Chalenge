@@ -13,3 +13,15 @@ def test_env_overrides(monkeypatch):
     monkeypatch.setenv("ACCURACY_BOOST_THRESHOLD", "0.8")
     cfg = load_boost_config()
     assert cfg.n_runs == 5 and cfg.threshold == 0.8
+
+
+import pytest
+
+
+@pytest.mark.parametrize("name,value", [
+    ("N_RUNS", "0"), ("THRESHOLD", "1.5"), ("THRESHOLD", "-0.1"), ("SAMPLE_TEMPERATURE", "-1"),
+])
+def test_invalid_values_rejected(monkeypatch, name, value):
+    monkeypatch.setenv(f"ACCURACY_BOOST_{name}", value)
+    with pytest.raises(ValueError):
+        load_boost_config()
