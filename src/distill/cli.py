@@ -61,6 +61,7 @@ def run_generation(
                 "business_id": q["business_id"],
                 "status": "verified" if trace else "failed",
                 "messages": trace.messages if trace else None,
+                "tools": trace.tools if trace else None,
             }
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             f.flush()

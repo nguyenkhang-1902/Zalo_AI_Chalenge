@@ -17,7 +17,11 @@ def build_sft_records(trace_records, devset_ids) -> list[dict]:
             continue
         seen.add(key)
         out.append(
-            {"messages": r["messages"], "meta": {"id": r["id"], "business_id": r["business_id"]}}
+            {
+                "messages": r["messages"],
+                "tools": r.get("tools"),
+                "meta": {"id": r["id"], "business_id": r["business_id"]},
+            }
         )
     return out
 

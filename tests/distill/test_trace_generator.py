@@ -50,3 +50,5 @@ def test_generate_trace_captures_full_messages(tmp_path):
     last = tr.messages[-1]
     assert last["role"] == "assistant"
     assert last["tool_calls"][0]["function"]["name"] == "submit_answer"  # trace kết ở submit
+    tool_names = {t["function"]["name"] for t in tr.tools}
+    assert {"run_sql", "submit_answer"} <= tool_names  # tools lưu kèm để train khớp inference

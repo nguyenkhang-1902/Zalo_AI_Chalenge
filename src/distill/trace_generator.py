@@ -4,7 +4,7 @@ run_react_loop bồi đắp, nên sau khi loop xong nó đã chứa cả assista
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Callable
@@ -25,6 +25,7 @@ from reasoning_agent.sql_tool import build_sql_tool
 class TraceResult:
     result: dict
     messages: list[dict]
+    tools: list[dict] = field(default_factory=list)  # tool-definitions (gồm schema_tools) để train khớp inference
 
 
 def generate_trace(
@@ -53,11 +54,16 @@ def generate_trace(
 
         def recording_chat_fn(messages: list[dict], tools: list[dict], timeout: float) -> dict:
             captured["messages"] = messages
+            captured["tools"] = tools  # cùng payload mỗi lần; run_react_loop đã gộp cả submit_answer
             return chat_completion_fn(
                 teacher_config, messages, tools, timeout, temperature=temperature, seed=seed
             )
 
         result = run_react_loop(recording_chat_fn, system_prompt, question, registry)
-        return TraceResult(result=result, messages=copy.deepcopy(captured.get("messages", [])))
+        return TraceResult(
+            result=result,
+            messages=copy.deepcopy(captured.get("messages", [])),
+            tools=copy.deepcopy(captured.get("tools", [])),
+        )
     finally:
         conn.close()
