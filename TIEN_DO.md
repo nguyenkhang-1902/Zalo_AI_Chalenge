@@ -292,3 +292,25 @@ commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
 
   ✅ Đã làm (cloud): `answer_formatter` CLI có cờ `--gate` (cổng tin cậy, tham số `ACCURACY_BOOST_*`);
   `load_boost_config` validate (`n_runs>=1`, `0<=threshold<=1`, `sample_temperature>=0`). Còn: chờ Docker guideline BTC.
+## 7. ĐỢT 2026-11-07 — Spec/plan + build code `008-distill-finetune`
+
+- [x] ✅ Chốt lại ràng buộc BTC từ `constitution.md`: KHÔNG có mốc 30s/câu (đó là luật **LifeMate**,
+  rule 9.7); DataMate chỉ có **6h tổng** cho toàn bộ private test trên 2×RTX 5090 + ≤15B. `public_test`
+  = 1000 câu → ngân sách suy ra ~21.6s/câu TRUNG BÌNH (không phải worst-case). Tốc độ không còn là nút
+  thắt; nút thắt thật = accuracy (chẩn đoán 60 câu baseline: **42% wrong_VALUE** = SQL sai).
+- [x] ✅ Spec + plan + tasks `008` (`specs/008-distill-finetune/`): verified distillation → QLoRA.
+  Teacher = model lớn qua **cổng API free** của Khang (chỉ data-gen, KHÔNG vào Docker); student =
+  **Qwen2.5-Coder-7B-Instruct** (Apache-2.0, 09/2024 < 26/10 ✓) QLoRA trên **Kaggle free**. Hợp lệ
+  Q&A 9.1 (distill từ LLM lớn/API để train model nhỏ offline ≤15B; data gửi BTC verify).
+- [x] ✅ Build + test T1–5,7 (package `src/distill/`): `teacher_config`, `trace_generator` (ghi
+  messages+tools, KHÔNG sửa lõi 004 — verify SQL nội tại qua `run_react_loop`), `collect` (rejection
+  sampling + `is_correct`), `cli` (loại DevSet, cache/resume), `dataset_builder` (SFT JSONL, dedupe),
+  `error_analysis`. **8/8 test PASS**, grep SC-005 sạch. Bổ sung capture `tools` để train khớp inference.
+- [x] ✅ T6: `scripts/kaggle_qlora.py` (QLoRA Coder-7B qua Unsloth, `train_on_responses_only`) +
+  `KAGGLE.md` (runbook + model card tuân thủ + serve vLLM + quy trình đo PA). Deps chỉ ở Kaggle,
+  KHÔNG thêm vào `requirements.txt`.
+- [ ] 🔜 **CHẠY THẬT (cần tài nguyên Khang)**: (1) teacher gateway (`TEACHER_*` env, model có
+  tool-calling) → `distill.generate` sinh dataset; (2) `distill.build_dataset` → `sft.jsonl`;
+  (3) Kaggle: smoke `kaggle_qlora.py --smoke` (xác nhận chat template render tool_calls), rồi train;
+  (4) đo PA baseline vs fine-tuned trên DevSet (SC-002/003). Kết quả chưa có → chưa kết luận.
+- [ ] 🔜 10 commit `008` đang ở local `main`, CHƯA push.
