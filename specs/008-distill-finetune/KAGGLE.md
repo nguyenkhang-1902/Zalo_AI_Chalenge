@@ -5,16 +5,30 @@ chạy (RTX 3050 6GB + không có deps). Student: **Qwen2.5-Coder-7B-Instruct**.
 
 ## 0. Chuẩn bị dataset (ở máy dev, trước khi lên Kaggle)
 
-```bash
-# 1) Sinh trace verified từ train/ (cần teacher gateway — xem TEACHER_* env)
-TEACHER_MODEL=<model-có-tool-calling> TEACHER_BASE_URL=<gateway>/v1 TEACHER_API_KEY=<key> \
-PYTHONIOENCODING=utf-8 python -m distill.generate \
-  --questions train/questions.jsonl --answers train/answers.jsonl \
-  --dataset-dir <thư mục đã build train: *.duckdb + *.schema.json + rulebook.md + calendar.csv> \
-  --out build_output/traces.jsonl --limit 0
+> ⚠️ Sau khi `git pull`: `build_output/` bị gitignore (KHÔNG có trong repo) → PHẢI build lại train.
+> Cần `train/` đã giải nén (BTC cấp, cũng gitignore). Mọi lệnh chạy ở gốc repo, có `PYTHONPATH=src`.
 
-# 2) Dựng SFT JSONL (loại DevSet, dedupe)
-PYTHONIOENCODING=utf-8 python -m distill.build_dataset \
+```bash
+# 0) Build 30 business train (~2 phút) → *.duckdb + *.schema.json + rulebook.md + calendar.csv
+PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m data_loader.build_all \
+  --dataset-dir train --out build_output/train008
+
+# 1) VALIDATE trước (quan trọng): --limit 50 để xác nhận gateway + model CÓ tool-calling + đo yield
+TEACHER_MODEL=<model-có-tool-calling> TEACHER_BASE_URL=<gateway>/v1 TEACHER_API_KEY=<key> \
+PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
+  --questions train/questions.jsonl --answers train/answers.jsonl \
+  --dataset-dir build_output/train008 --out build_output/traces_probe.jsonl --limit 50
+# → đếm status=verified trong traces_probe.jsonl. 0 verified mà model vẫn trả tool_calls → nhiều khả
+#   năng model KHÔNG hỗ trợ function-calling (đổi model). Yield ổn thì chạy full:
+
+# 2) Sinh trace verified toàn bộ train/ (tự loại DevSet; resume được nếu đứt giữa chừng)
+TEACHER_MODEL=<model> TEACHER_BASE_URL=<gateway>/v1 TEACHER_API_KEY=<key> \
+PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
+  --questions train/questions.jsonl --answers train/answers.jsonl \
+  --dataset-dir build_output/train008 --out build_output/traces.jsonl --limit 0
+
+# 3) Dựng SFT JSONL (loại DevSet, dedupe)
+PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.build_dataset \
   --traces build_output/traces.jsonl --questions train/questions.jsonl \
   --answers train/answers.jsonl --out build_output/sft.jsonl
 ```
