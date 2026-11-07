@@ -1,6 +1,6 @@
 # HIẾN PHÁP DỰ ÁN — Zalo AI Challenge 2026: DataMate
 
-> `constitution.md` · phiên bản 1.0 · theo Spec-Driven Development
+> `constitution.md` · phiên bản 1.1 · theo Spec-Driven Development
 > Nền tảng bất biến mọi spec/plan/task phải tuân. Xung đột → hiến pháp thắng.
 
 ## 0. 🧭 Bối cảnh dự án
