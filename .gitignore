@@ -19,3 +19,8 @@ venv/
 *.gguf
 *.safetensors
 /models/
+
+# distill teacher secrets (feature 008) — không commit
+.env.distill
+.env
+.env.*
