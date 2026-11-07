@@ -1,0 +1,86 @@
+# Runbook — QLoRA fine-tune student trên Kaggle (feature 008)
+
+Chạy `scripts/kaggle_qlora.py` trên **Kaggle Notebook GPU free** (T4×2, 30h/tuần). Máy dev KHÔNG
+chạy (RTX 3050 6GB + không có deps). Student: **Qwen2.5-Coder-7B-Instruct**.
+
+## 0. Chuẩn bị dataset (ở máy dev, trước khi lên Kaggle)
+
+```bash
+# 1) Sinh trace verified từ train/ (cần teacher gateway — xem TEACHER_* env)
+TEACHER_MODEL=<model-có-tool-calling> TEACHER_BASE_URL=<gateway>/v1 TEACHER_API_KEY=<key> \
+PYTHONIOENCODING=utf-8 python -m distill.generate \
+  --questions train/questions.jsonl --answers train/answers.jsonl \
+  --dataset-dir <thư mục đã build train: *.duckdb + *.schema.json + rulebook.md + calendar.csv> \
+  --out build_output/traces.jsonl --limit 0
+
+# 2) Dựng SFT JSONL (loại DevSet, dedupe)
+PYTHONIOENCODING=utf-8 python -m distill.build_dataset \
+  --traces build_output/traces.jsonl --questions train/questions.jsonl \
+  --answers train/answers.jsonl --out build_output/sft.jsonl
+```
+
+Upload `build_output/sft.jsonl` + `scripts/kaggle_qlora.py` làm Kaggle Dataset/Notebook input.
+
+## 1. Cell cài deps (CHỈ trên Kaggle — không thêm vào requirements.txt)
+
+```bash
+pip install -q "unsloth[kaggle-new]" "trl>=0.12" "datasets"
+```
+
+## 2. Smoke run (BẮT BUỘC trước khi train thật)
+
+```bash
+python kaggle_qlora.py --data /kaggle/input/<ds>/sft.jsonl --out /kaggle/working/adapter --smoke
+```
+
+Mục tiêu smoke: xác nhận **chat template render đúng** `tool_calls` + `tool` role + `tools=` (đây là
+điểm rủi ro đã flag ở spec). Nếu `apply_chat_template`/`train_on_responses_only` báo lỗi marker →
+chỉnh `instruction_part`/`response_part` trong `kaggle_qlora.py` cho khớp template Qwen2.5 bản đang
+dùng, chạy lại smoke. Ghi kết quả smoke (OK/lỗi + chỉnh gì) vào CUỐI file này.
+
+## 3. Train thật
+
+```bash
+python kaggle_qlora.py --data /kaggle/input/<ds>/sft.jsonl --out /kaggle/working/adapter --epochs 1
+```
+
+Ghi lại: thời gian train, VRAM đỉnh, loss cuối (SC-004 cần số tái lập). Download `/kaggle/working/adapter`.
+
+## 4. Serve để đo PA (vLLM, OpenAI endpoint)
+
+```bash
+pip install -q vllm
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-Coder-7B-Instruct --enable-lora \
+  --lora-modules tuned=/kaggle/working/adapter --port 8000 --enable-auto-tool-choice --tool-call-parser hermes
+```
+
+Rồi đo baseline vs fine-tuned (reuse 007, xem `distill-finetune-tasks.md` Task 7 Step 6):
+
+```bash
+# baseline
+REASONING_AGENT_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct REASONING_AGENT_BASE_URL=http://localhost:8000/v1 \
+PYTHONIOENCODING=utf-8 python -m accuracy_boost.measure collect --dataset-dir <built train> --out runs_base.jsonl --limit 200
+# fine-tuned (LoRA)
+REASONING_AGENT_MODEL=tuned REASONING_AGENT_BASE_URL=http://localhost:8000/v1 \
+PYTHONIOENCODING=utf-8 python -m accuracy_boost.measure collect --dataset-dir <built train> --out runs_tuned.jsonl --limit 200
+# PA + phân loại lỗi
+python -m accuracy_boost.measure report --runs runs_tuned.jsonl
+# (+ distill.error_analysis.classify_outcomes để so wrong_VALUE trước/sau — SC-003)
+```
+
+## 5. Tuân thủ BTC (model card — rule 8.2 / 8.9)
+
+- **Base**: `Qwen/Qwen2.5-Coder-7B-Instruct` · **license Apache-2.0** · phát hành **09/2024**
+  (< 26/10/2026 ✓) · 7.6B params + **LoRA r=16** → tổng **< 15B** (rule 8.2 ✓).
+- **Khai báo trong README solution**: tên base + commit/revision, LoRA adapter, tổng params inference.
+- **Offline**: adapter + base nạp từ image/volume; teacher (API ngoài) KHÔNG có trong Docker (rule 8.3).
+- **Gửi BTC verify** (rule 8.9.1/8.9.3): `build_output/sft.jsonl` (data train) + `scripts/kaggle_qlora.py`
+  (code train) + `src/distill/` (code sinh data) + runbook này → `aichallenge@zalo.me`.
+- **Tất định inference** (rule 8.8): serve temp 0 + seed cố định; kiểm `|ΔPA| ≤ 0.03` khi re-run (SC-007).
+
+---
+
+## Kết quả smoke / train (điền khi chạy)
+
+> _(chưa chạy — điền sau khi smoke trên Kaggle: template OK?, chỉnh gì, thời gian train, VRAM, loss)_
