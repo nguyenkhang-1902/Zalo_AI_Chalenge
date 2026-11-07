@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 from datetime import date
 from pathlib import Path
 from typing import Callable
@@ -34,6 +35,7 @@ def run_generation(
     collect_fn: Callable = collect_verified_trace,
     max_attempts: int = 3,
     teacher_config=None,
+    sleep_seconds: float = 0.0,
 ) -> dict:
     out_path = Path(out_path)
     done = _done_ids(out_path)
@@ -45,17 +47,22 @@ def run_generation(
                 counts["skipped"] += 1
                 continue
             g = answers_by_id[qid]
-            trace = collect_fn(
-                q["question"],
-                q["business_id"],
-                date.fromisoformat(q["as_of_date"]),
-                dataset_dir,
-                teacher_config,
-                g["type"],
-                g.get("answer"),
-                g.get("alias", []),
-                max_attempts=max_attempts,
-            )
+            error = None
+            try:
+                trace = collect_fn(
+                    q["question"],
+                    q["business_id"],
+                    date.fromisoformat(q["as_of_date"]),
+                    dataset_dir,
+                    teacher_config,
+                    g["type"],
+                    g.get("answer"),
+                    g.get("alias", []),
+                    max_attempts=max_attempts,
+                )
+            except Exception as e:  # 1 câu lỗi không được làm sập cả batch dài ~3000 câu
+                trace = None
+                error = str(e)
             rec = {
                 "id": qid,
                 "business_id": q["business_id"],
@@ -63,9 +70,13 @@ def run_generation(
                 "messages": trace.messages if trace else None,
                 "tools": trace.tools if trace else None,
             }
+            if error:
+                rec["error"] = error
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             f.flush()
             counts["verified" if trace else "failed"] += 1
+            if sleep_seconds:
+                time.sleep(sleep_seconds)  # pacing cho gateway free có RPM limit
     return counts
 
 
@@ -82,6 +93,12 @@ def main() -> None:
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--max-attempts", type=int, default=int(os.environ.get("DISTILL_MAX_ATTEMPTS", "3")))
     p.add_argument("--devset-size", type=int, default=200)
+    p.add_argument(
+        "--sleep-seconds",
+        type=float,
+        default=float(os.environ.get("DISTILL_SLEEP_SECONDS", "0")),
+        help="nghỉ giữa các câu để không vượt RPM của gateway free (0 = không nghỉ)",
+    )
     a = p.parse_args()
 
     questions = _read_jsonl(a.questions)
@@ -97,6 +114,7 @@ def main() -> None:
         devset_ids,
         max_attempts=a.max_attempts,
         teacher_config=load_teacher_config(),
+        sleep_seconds=a.sleep_seconds,
     )
     print("counts:", counts)
 

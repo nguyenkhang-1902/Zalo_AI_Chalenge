@@ -15,7 +15,7 @@ PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m data_loader.build_all \
 
 # 1) VALIDATE trước (quan trọng): --limit 50 để xác nhận gateway + model CÓ tool-calling + đo yield
 TEACHER_MODEL=<model-có-tool-calling> TEACHER_BASE_URL=<gateway>/v1 TEACHER_API_KEY=<key> \
-PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
+REASONING_AGENT_TIME_BUDGET=300 PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
   --questions train/questions.jsonl --answers train/answers.jsonl \
   --dataset-dir build_output/train008 --out build_output/traces_probe.jsonl --limit 50
 # → đếm status=verified trong traces_probe.jsonl. 0 verified mà model vẫn trả tool_calls → nhiều khả
@@ -23,7 +23,7 @@ PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
 
 # 2) Sinh trace verified toàn bộ train/ (tự loại DevSet; resume được nếu đứt giữa chừng)
 TEACHER_MODEL=<model> TEACHER_BASE_URL=<gateway>/v1 TEACHER_API_KEY=<key> \
-PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
+REASONING_AGENT_TIME_BUDGET=300 PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.generate \
   --questions train/questions.jsonl --answers train/answers.jsonl \
   --dataset-dir build_output/train008 --out build_output/traces.jsonl --limit 0
 
@@ -32,6 +32,16 @@ PYTHONIOENCODING=utf-8 PYTHONPATH=src python -m distill.build_dataset \
   --traces build_output/traces.jsonl --questions train/questions.jsonl \
   --answers train/answers.jsonl --out build_output/sft.jsonl
 ```
+
+**Tinh chỉnh cho gateway free (quan trọng):**
+- `REASONING_AGENT_TIME_BUDGET=300` (đã có ở lệnh trên): teacher qua API lớn chậm hơn local; mặc
+  định 45s hay bị cắt giữa chừng → yield verify thấp oan. Đặt cao cho data-gen (inference nộp bài
+  vẫn 45s, không ảnh hưởng).
+- Nếu gateway có **RPM limit** (vd Groq free ~30 req/phút) → thêm `DISTILL_SLEEP_SECONDS=2` (hoặc
+  `--sleep-seconds 2`) vào lệnh generate để nghỉ giữa câu, tránh 429.
+- **Câu lỗi tạm thời** (429/timeout) bị ghi `status:"failed"` kèm `error` và **bị bỏ qua khi
+  resume**. Muốn thử lại nhóm này: lọc bỏ các dòng `"status":"failed"` khỏi `traces.jsonl` rồi chạy
+  lại `distill.generate` (nó resume các id chưa có). Câu khó thật sẽ lại failed — đó là bình thường.
 
 Upload `build_output/sft.jsonl` + `scripts/kaggle_qlora.py` làm Kaggle Dataset/Notebook input.
 
