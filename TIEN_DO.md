@@ -284,7 +284,10 @@ commit fix + review riêng, Task 8 re-verify toàn bộ không sửa thêm code:
   cổng N=3 ngưỡng 1.0 PA -0.283; semantic tools -0.617; **few-shot k=3 PA -0.333 (5/60 đúng = 8.3%, <10%)**.
   Few-shot tốt nhất về số câu đúng nhưng chậm (134s/câu) và 30/60 câu hết ngân sách 240s; ngân sách nộp
   45s có thể làm tệ hơn → cần đo lại few-shot với ngân sách ~45s trước khi bật mặc định.
-  CÒN LẠI: Khang quyết có tải 14B-Q4 (~9GB) để đo hay không (quy ước: <10% thì hỏi); thử gộp few-shot + cổng.
+  **Đợt 2 (2026-11-06, xem `docs/measure-007-results.md`)**: ở ngân sách 45s mọi cấu hình gần như vô dụng
+  (baseline 60/60 hết ngân sách; few-shot k=3 PA -0.083); few-shot k=3 + cổng N=3 ngưỡng 0.6–1.0 đạt PA 0.000
+  (30 câu, 240s, mẫu nhỏ); **14B-Q4 không tốt hơn 7B** (baseline hòa, few-shot 14B 0/20 vs 7B 2/20, chậm 2.6–4.2×)
+  → bỏ 14B. CÒN LẠI: quyết ngân sách thật (BTC chỉ giới hạn 6h tổng, 45s là cấu hình của mình) và tăng tốc.
 - [~] 🔄 **Cho 006**: nối cổng tin cậy vào đường tạo `submission.jsonl` (hiện chỉ dùng được qua
   `accuracy_boost.measure`; `answer_formatter` CLI vẫn gọi `answer_question` mặc định); validate config
   (`n_runs >= 1`, `0 <= threshold <= 1`); `runner` hiện ghi lỗi hạ tầng thành `unanswerable` (−1) — xem lại
